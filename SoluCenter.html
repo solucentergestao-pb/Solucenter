@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b86b5">
+<title>SoluCenter Gestão FINAL v1.0</title>
+<style>
+:root{--blue:#0b86b5;--navy:#075b7b;--green:#16b887;--red:#e95f66;--bg:#f3f6f8;--text:#29444d;--muted:#687b84;--line:#d9e2e6;--card:#fff;--yellow:#f2b84b}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--text);padding-bottom:86px}
+header{background:linear-gradient(135deg,#0b86b5,#08739a);color:#fff;padding:20px 18px 18px;position:sticky;top:0;z-index:10}header h1{margin:0;font-size:25px;font-weight:850}header p{margin:5px 0 0;font-size:14px;font-weight:650;opacity:.95}
+main{max-width:920px;margin:auto;padding:14px 14px 28px}.row{display:flex;justify-content:space-between;align-items:center;gap:10px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.list{display:grid;gap:10px}.card,.item{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}.hero{background:linear-gradient(135deg,#0b86b5,#08739a);color:#fff;border-radius:18px;padding:17px}.hero h2{color:#fff;margin:3px 0;font-size:22px}.metric strong{display:block;font-size:22px;color:var(--navy);margin-top:4px}.metric small,.sub{color:var(--muted)}h2{color:var(--navy);font-size:19px;margin:14px 0 9px}.section{margin-top:16px}.total{font-size:23px;font-weight:850;color:var(--navy)}.profit{color:#07976f!important}.loss{color:#d84b55!important}.pill{background:#e8f7f2;color:#07976f;border-radius:20px;padding:4px 8px;font-size:12px;font-weight:800}.pill.blue{background:#e9f4f8;color:var(--navy)}.pill.yellow{background:#fff5dc;color:#9a6800}
+button{border:0;border-radius:11px;padding:11px 13px;font-weight:780;font-size:15px;cursor:pointer}.primary{background:var(--blue);color:#fff}.green{background:var(--green);color:#fff}.danger{background:var(--red);color:#fff}.ghost{background:#eaf3f6;color:var(--navy)}.dark{background:var(--navy);color:#fff}.actions{display:flex;gap:8px;flex-wrap:wrap}.empty{text-align:center;color:var(--muted);padding:24px}.notice{background:#eaf3f6;border-left:4px solid var(--blue);padding:12px;border-radius:10px;margin-bottom:14px}
+.field{margin:10px 0}.field label{display:block;font-size:13px;font-weight:780;color:var(--muted);margin-bottom:5px}input,select,textarea{width:100%;padding:12px;border:1px solid #cbd9de;border-radius:10px;font-size:16px;background:#fff;color:#23343b}textarea{min-height:85px}.seg{display:flex;background:#e4edf0;border-radius:12px;padding:3px;gap:3px}.seg button{flex:1;background:transparent;color:var(--muted);padding:9px 5px}.seg button.on{background:#fff;color:var(--navy);box-shadow:0 1px 4px #0001}
+.day{border-left:5px solid var(--blue)}.day.today{border-left-color:var(--green)}.time{font-size:14px;font-weight:850;color:var(--navy);min-width:55px}.agenda-row{display:grid;grid-template-columns:58px 1fr;gap:9px;align-items:start}.calendar-head{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:11px;font-weight:800;color:var(--muted);margin-top:10px}.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.calday{background:#fff;border:1px solid var(--line);border-radius:9px;min-height:48px;padding:5px;font-size:12px;cursor:pointer}.calday.muted{opacity:.42}.calday.sel{outline:2px solid var(--blue)}.calday.has{font-weight:850}.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-left:3px}
+nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:space-around;z-index:20;padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -2px 12px #0000000d}nav button{background:#fff;color:#71838a;border-radius:0;min-width:58px;font-size:11px;padding:9px 3px}.active{color:var(--blue)!important;font-weight:900}
+.modal{display:none;position:fixed;inset:0;background:#0008;z-index:30;align-items:flex-end}.modal.show{display:flex}.sheet{background:#fff;width:100%;max-height:92vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px}@media(min-width:700px){.grid{grid-template-columns:repeat(4,1fr)}.sheet{width:650px;margin:auto;border-radius:20px}}
+.small{font-size:12px}.tap{cursor:pointer}.dangerText{color:#d84b55}.divider{height:1px;background:var(--line);margin:12px 0}
+</style>
+</head>
+<body>
+<header><h1>❄️ SoluCenter Gestão</h1><p>Climatização e Elétrica • <b>FINAL v1.0</b> • Gestão Completa</p></header>
+<main id="app"></main>
+<nav>
+<button data-p="home">⌂<br>Início</button>
+<button data-p="agenda">◷<br>Agenda</button><button data-p="exec">✓<br>Atendimento</button><button data-p="reports">▤<br>Relatórios</button><button data-p="profit">◈<br>Rentabilidade</button><button data-p="orders">▣<br>Orçamentos</button><button data-p="summary">★<br>Resumo</button>
+<button data-p="finance">R$<br>Financeiro</button>
+<button data-p="clients">♙<br>Clientes</button>
+<button data-p="more">☰<br>Mais</button>
+</nav>
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+<script>
+(function(){
+const KEY='sc_gestao_final';
+let db={services:[],clients:[],expenses:[],catalog:[],equipment:[]};
+function load(){try{const a=localStorage.getItem(KEY);if(a)db=Object.assign(db,JSON.parse(a)||{});else{const old=localStorage.getItem('sc_gestao_v05');if(old){db=Object.assign(db,JSON.parse(old)||{});save();}}}catch(e){}Object.keys(db).forEach(k=>{if(!Array.isArray(db[k]))db[k]=[]})}
+load();
+let page='home', selectedDate=today();
+const $=id=>document.getElementById(id);
+const money=n=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(n)||0);
+function today(){const d=new Date();return iso(d)}
+function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function dateBR(s){return s?new Date(s+'T12:00:00').toLocaleDateString('pt-BR'):''}
+function uid(){return (crypto&&crypto.randomUUID)?crypto.randomUUID():String(Date.now()+Math.random())}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(db));}catch(e){}}
+function totals(){let revenue=db.services.filter(x=>x.status!=='Cancelado').reduce((a,x)=>a+Number(x.price||0),0);let direct=db.services.filter(x=>x.status!=='Cancelado').reduce((a,x)=>a+Number(x.material||0)+Number(x.travel||0)+Number(x.other||0),0);let expenses=db.expenses.reduce((a,x)=>a+Number(x.value||0),0);return{revenue,cost:direct+expenses,profit:revenue-direct-expenses,margin:revenue?(revenue-direct-expenses)/revenue*100:0,pending:db.services.filter(x=>x.status!=='Cancelado'&&x.paid!==true).reduce((a,x)=>a+Number(x.price||0),0)}}
+function esc(s){return String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+function render(){const a=$('app');a.innerHTML=page==='home'?home():page==='agenda'?agenda():page==='exec'?execution():page==='reports'?reports():page==='finance'?finance():page==='profit'?profitability():page==='orders'?orders():page==='summary'?finalSummary():page==='clients'?clients():more();document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.p===page))}
+function home(){
+ const today=new Date().toISOString().slice(0,10);
+ const services=(db.services||[]).filter(x=>x.date===today).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+ const all=db.services||[], exp=db.expenses||[];
+ const revenue=all.reduce((s,x)=>s+(+x.price||0),0);
+ const cost=all.reduce((s,x)=>s+(+x.material||0)+(+x.travel||0)+(+x.otherCost||0),0)+exp.reduce((s,x)=>s+(+x.value||0),0);
+ const pending=all.filter(x=>x.paid!=='Recebido').reduce((s,x)=>s+(+x.price||0),0);
+ const profit=revenue-cost;
+ const open=all.filter(x=>x.status!=='Concluído'&&x.status!=='Cancelado').length;
+ return `<div class="hero"><div class="row"><div><div class="small">BOM DIA</div><h2>Seu painel de hoje</h2><div>${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'})}</div></div><button class="green" onclick="openService()">+ Serviço</button></div></div>
+ <div class="grid cards"><div class="card"><div class="sub">Hoje</div><div class="total">${services.length}</div><div class="sub">atendimento(s)</div></div><div class="card"><div class="sub">A receber</div><div class="total">${money(pending)}</div></div><div class="card"><div class="sub">Lucro acumulado</div><div class="total">${money(profit)}</div></div><div class="card"><div class="sub">Pendentes</div><div class="total">${open}</div></div></div>
+ <div class="section"><div class="row"><h2>Agenda de hoje</h2><button class="ghost" onclick="page='agenda';render()">Ver agenda</button></div><div class="list">${services.length?services.map(x=>`<div class="item day"><div class="row"><div><b>${esc(x.time||'—')} • ${esc(x.client||'Cliente')}</b><div class="sub">${esc(x.type||'Serviço')} • ${esc(x.equipment||'')}</div></div><span class="pill ${x.status==='Concluído'?'':'blue'}">${esc(x.status||'Agendado')}</span></div><div class="actions" style="margin-top:9px"><button class="primary" onclick="openExecution('${x.id}')">Abrir atendimento</button></div></div>`).join(''):'<div class="card empty">Nenhum serviço agendado para hoje.</div>'}</div></div>
+ <div class="section card"><div class="row"><h2>Visão financeira</h2><button class="ghost" onclick="page='finance';render()">Abrir financeiro</button></div><div class="grid"><div><div class="sub">Faturamento</div><b>${money(revenue)}</b></div><div><div class="sub">Custos</div><b>${money(cost)}</b></div></div><div style="margin-top:12px"><div class="sub">Resultado</div><div class="total">${money(profit)}</div></div></div>
+ <div class="section card"><h2>Ações rápidas</h2><div class="actions"><button class="primary" onclick="openService()">+ Novo serviço</button><button class="ghost" onclick="openExpense()">+ Nova despesa</button><button class="ghost" onclick="page='clients';render()">+ Cliente</button><button class="ghost" onclick="page='reports';render()">Relatórios</button><button class="ghost" onclick="openServiceCatalog()">Catálogo de serviços</button></div></div>`;
+}
+
+function agendaItem(x){const lucro=Number(x.price||0)-Number(x.material||0)-Number(x.travel||0)-Number(x.other||0);return `<div class="item day ${x.date===today()?'today':''}"><div class="agenda-row"><div class="time">${x.time||'—'}</div><div><div class="row"><b>${esc(x.client||'Cliente')}</b><span class="pill ${x.status==='Concluído'?'':'blue'}">${esc(x.status||'Agendado')}</span></div><div class="sub">${esc(x.type||'Serviço')}${x.equipment?' • '+esc(x.equipment):''}</div><div class="row" style="margin-top:8px"><span class="small">${x.paid?'Recebido':'A receber'}</span><b class="${lucro>=0?'profit':'loss'}">${money(lucro)}</b></div><div class="actions" style="margin-top:8px"><button class="primary" onclick="openExecution('${x.id}')">Atendimento</button><button class="ghost" onclick="openService('${x.id}')">Editar</button>${x.paid?'':'<button class="green" onclick="markReceived(\''+x.id+'\')">Recebido</button>'}</div></div></div></div>`}
+function agenda(){let d=new Date(selectedDate+'T12:00:00');let start=new Date(d);start.setDate(d.getDate()-((d.getDay()+6)%7));let cells='';for(let i=0;i<35;i++){let x=new Date(start);x.setDate(start.getDate()+i);let s=iso(x),has=db.services.some(z=>z.date===s&&z.status!=='Cancelado');cells+=`<div class="calday ${x.getMonth()!==d.getMonth()?'muted':''} ${s===selectedDate?'sel':''} ${has?'has':''}" onclick="selectDate('${s}')"><b>${x.getDate()}</b>${has?'<span class="dot"></span>':''}</div>`}let list=db.services.filter(x=>x.date===selectedDate&&x.status!=='Cancelado').sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99'));return `<div class="row"><div><h2 style="margin:5px 0">Agenda</h2><div class="sub">Dia, semana e mês em uma única visão.</div></div><button class="primary" onclick="openService()">+ Agendar</button></div><div class="section card"><div class="row"><button class="ghost" onclick="moveMonth(-1)">‹</button><b>${d.toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</b><button class="ghost" onclick="moveMonth(1)">›</button></div><div class="calendar-head"><span>SEG</span><span>TER</span><span>QUA</span><span>QUI</span><span>SEX</span><span>SÁB</span><span>DOM</span></div><div class="calendar">${cells}</div><div class="divider"></div><button class="ghost" onclick="selectDate('${today()}')">Ir para hoje</button></div><div class="section"><div class="row"><div><h2>${selectedDate===today()?'Hoje':dateBR(selectedDate)}</h2><div class="sub">${list.length} serviço(s).</div></div></div><div class="list" style="margin-top:9px">${list.length?list.map(agendaItem).join(''):'<div class="card empty">Nenhum serviço nesta data.<br><button class="primary" style="margin-top:10px" onclick="openService()">Agendar para este dia</button></div>'}</div></div>`}
+window.selectDate=s=>{selectedDate=s;page='agenda';render()};window.moveMonth=delta=>{let d=new Date(selectedDate+'T12:00:00');d.setMonth(d.getMonth()+delta);selectedDate=iso(d);render()};
+function finance(){
+ const services=db.services||[], expenses=db.expenses||[];
+ const revenue=services.reduce((s,x)=>s+(+x.price||0),0);
+ const svcCost=services.reduce((s,x)=>s+(+x.material||0)+(+x.travel||0)+(+x.otherCost||0),0);
+ const general=expenses.reduce((s,x)=>s+(+x.value||0),0);
+ const costs=svcCost+general, profit=revenue-costs, margin=revenue?profit/revenue*100:0;
+ const received=services.filter(x=>x.paid==='Recebido').reduce((s,x)=>s+(+x.price||0),0);
+ const pending=revenue-received;
+ const months={};
+ services.forEach(x=>{let k=(x.date||'').slice(0,7)||'Sem data'; if(!months[k])months[k]={r:0,c:0,n:0};months[k].r+=+x.price||0;months[k].c=(+x.material||0)+(+x.travel||0)+(+x.otherCost||0);months[k].n++});
+ expenses.forEach(x=>{let k=(x.date||'').slice(0,7)||'Sem data';if(!months[k])months[k]={r:0,c:0,n:0};months[k].c+=+x.value||0});
+ const rows=Object.entries(months).sort((a,b)=>b[0].localeCompare(a[0])).map(([m,v])=>`<div class="item"><div class="row"><b>${m}</b><b>${money(v.r-v.c)}</b></div><div class="sub">Receita ${money(v.r)} • Custos ${money(v.c)} • ${v.n} serviço(s)</div></div>`).join('');
+ return `<div class="hero"><div><div class="small">GESTÃO FINANCEIRA</div><h2>O dinheiro da SoluCenter</h2><div>Veja faturamento, custos, lucro e o que ainda precisa receber.</div></div></div>
+ <div class="grid cards"><div class="card"><div class="sub">Faturamento</div><div class="total">${money(revenue)}</div></div><div class="card"><div class="sub">Custos</div><div class="total">${money(costs)}</div></div><div class="card"><div class="sub">Lucro</div><div class="total">${money(profit)}</div></div><div class="card"><div class="sub">Margem</div><div class="total">${margin.toFixed(1)}%</div></div></div>
+ <div class="grid"><div class="card"><div class="sub">Já recebido</div><div class="total">${money(received)}</div></div><div class="card"><div class="sub">A receber</div><div class="total">${money(pending)}</div></div></div>
+ <div class="section card"><h2>Resultado por mês</h2><div class="list">${rows||'<div class="empty">Cadastre serviços e despesas para começar os indicadores.</div>'}</div></div>
+ <div class="section card"><h2>Como está sua operação</h2><div class="sub">Para cada R$ 100,00 faturados, o negócio está gerando <b>R$ ${revenue?(profit/revenue*100).toFixed(2):'0,00'}</b> de lucro.</div><div class="sub" style="margin-top:8px">Esse indicador será usado nas próximas etapas para descobrir quais serviços têm melhor margem.</div></div>
+ <div class="section card"><div class="row"><h2>Despesas</h2><button class="danger" onclick="openExpense()">+ Despesa</button></div><div class="list">${expenses.length?expenses.slice().reverse().map(x=>`<div class="item"><div class="row"><b>${esc(x.description||'Despesa')}</b><b>${money(x.value)}</b></div><div class="sub">${x.date?dateBR(x.date):''} • ${esc(x.category||'Geral')}</div></div>`).join(''):'<div class="empty">Nenhuma despesa registrada.</div>'}</div></div>`;
+}
+
+function clients(){return `<div class="row"><div><h2 style="margin:5px 0">Clientes</h2><div class="sub">Clientes e quantidade de equipamentos.</div></div><button class="primary" onclick="openClient()">+ Novo</button></div><div class="list" style="margin-top:14px">${db.clients.length?db.clients.slice().reverse().map(c=>{let q=db.services.filter(s=>s.client===c.name).length;return `<div class="item"><div class="row"><b>${esc(c.name)}</b><span class="pill blue">${q} serviço(s)</span></div><div class="sub">${esc(c.phone||'Sem telefone')}${c.city?' • '+esc(c.city):''}</div><div class="actions" style="margin-top:8px"><button class="ghost" onclick="openClientEdit('${c.id}')">Editar</button><button class="danger" onclick="delClient('${c.id}')">Excluir</button></div></div>`}).join(''):'<div class="card empty">Cadastre seu primeiro cliente.</div>'}</div>`}
+function more(){return `<h2 style="margin:5px 0">Mais</h2><div class="list"><div class="card"><div class="row"><div><b>Catálogo de serviços</b><div class="sub">Use preços de referência, mas defina o valor final em cada atendimento.</div></div><button class="primary" onclick="openCatalog()">+ Serviço</button></div><div class="list" style="margin-top:10px">${db.catalog.map(c=>`<div class="item"><div class="row"><b>${esc(c.name)}</b><b>${money(c.price)}</b></div></div>`).join('')||'<div class="empty">Nenhum serviço cadastrado.</div>'}</div></div><div class="card"><b>Backup dos dados</b><div class="sub" style="margin:6px 0">Faça uma cópia dos clientes, serviços, despesas e catálogo.</div><button class="primary" onclick="backup()">Exportar backup</button></div><div class="card"><b>SoluCenter Gestão FINAL v1.0</b><div class="sub" style="margin-top:6px">Evolução: agenda por dia/mês, serviços, clientes, despesas e financeiro integrado.</div></div></div>`}
+
+function execution(){
+ const list=db.services.filter(x=>x.status!=='Concluído'&&x.status!=='Cancelado').sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+ return `<div class="hero"><div class="row"><div><div class="small">EXECUÇÃO DO SERVIÇO</div><h2>Atendimentos</h2><div>Abra o serviço e registre o que aconteceu no local.</div></div><button class="green" onclick="openService()">+ Agendar</button></div></div><div class="section"><h2>Serviços pendentes</h2><div class="list">${list.length?list.map(executionCard).join(''):'<div class="card empty">Nenhum atendimento pendente.</div>'}</div></div>`;
+}
+function executionCard(x){
+ return `<div class="item day"><div class="row"><div><b>${esc(x.client||'Cliente')}</b><div class="sub">${dateBR(x.date)}${x.time?' • '+x.time:''}</div></div><span class="pill blue">${esc(x.status||'Agendado')}</span></div><div style="margin-top:8px"><b>${esc(x.type||'Serviço')}</b><div class="sub">${esc(x.equipment||'Sem referência')}</div></div><div class="actions" style="margin-top:10px"><button class="primary" onclick="openExecution('${x.id}')">Iniciar atendimento</button><button class="ghost" onclick="openService('${x.id}')">Editar</button></div></div>`;
+}
+window.openExecution=id=>{
+ const x=db.services.find(s=>s.id===id); if(!x)return;
+ x.execution=x.execution||{diagnosis:'',tests:'',work:'',parts:'',observations:'',checklist:[]};
+ const e=x.execution;
+ modal('Atendimento • '+esc(x.client||'Cliente'),`<div class="notice"><b>${esc(x.type||'Serviço')}</b><br>${dateBR(x.date)}${x.time?' • '+x.time:''}${x.equipment?' • '+esc(x.equipment):''}</div>
+ <div class="field"><label>Status</label><select id="xs"><option ${x.status==='Em execução'?'selected':''}>Em execução</option><option ${x.status==='Concluído'?'selected':''}>Concluído</option><option ${x.status==='Agendado'?'selected':''}>Agendado</option><option ${x.status==='Cancelado'?'selected':''}>Cancelado</option></select></div>
+ <h2>Checklist técnico</h2><div class="card">
+ <label><input id="ck1" type="checkbox" ${e.checklist.includes('alimentacao')?'checked':''}> Alimentação elétrica verificada</label><br>
+ <label><input id="ck2" type="checkbox" ${e.checklist.includes('pressao')?'checked':''}> Pressão de trabalho verificada</label><br>
+ <label><input id="ck3" type="checkbox" ${e.checklist.includes('corrente')?'checked':''}> Corrente de trabalho verificada</label><br>
+ <label><input id="ck4" type="checkbox" ${e.checklist.includes('dreno')?'checked':''}> Dreno verificado/desobstruído</label><br>
+ <label><input id="ck5" type="checkbox" ${e.checklist.includes('estanqueidade')?'checked':''}> Estanqueidade verificada</label></div>
+ <div class="field"><label>Diagnóstico / problema encontrado</label><textarea id="xd" placeholder="Defeito, causa provável e condição encontrada...">${esc(e.diagnosis)}</textarea></div>
+ <div class="field"><label>Testes e medições</label><textarea id="xt" placeholder="Tensão, corrente, pressão, capacitor, temperatura...">${esc(e.tests)}</textarea></div>
+ <div class="field"><label>Serviço executado</label><textarea id="xw" placeholder="Descreva exatamente o que foi realizado...">${esc(e.work)}</textarea></div>
+ <div class="field"><label>Peças / materiais utilizados</label><textarea id="xp" placeholder="Ex.: capacitor 5 µF, isolação, cabo...">${esc(e.parts)}</textarea></div>
+ <div class="field"><label>Observações / recomendações</label><textarea id="xo" placeholder="Pendências, garantia, retorno, recomendações...">${esc(e.observations)}</textarea></div>
+ <div class="grid"><div class="field"><label>Valor cobrado (R$)</label><input id="xprice" type="number" step="0.01" value="${x.price||0}"></div><div class="field"><label>Materiais (R$)</label><input id="xmat" type="number" step="0.01" value="${x.material||0}"></div></div>
+ <button class="green" style="width:100%;margin-top:10px" onclick="saveExecution('${id}')">Salvar atendimento</button>`);
+};
+window.saveExecution=id=>{
+ const x=db.services.find(s=>s.id===id); if(!x)return;
+ x.status=$('xs').value; x.price=+$('xprice').value||0; x.material=+$('xmat').value||0;
+ const map={ck1:'alimentacao',ck2:'pressao',ck3:'corrente',ck4:'dreno',ck5:'estanqueidade'};
+ x.execution={diagnosis:$('xd').value.trim(),tests:$('xt').value.trim(),work:$('xw').value.trim(),parts:$('xp').value.trim(),observations:$('xo').value.trim(),checklist:['ck1','ck2','ck3','ck4','ck5'].filter(k=>$(k).checked).map(k=>map[k])};
+ save(); closeModal(); page='exec'; render();
+};
+
+function reports(){
+  const done=db.services.filter(x=>x.status==='Concluído').sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const revenue=done.reduce((s,x)=>s+(+x.price||0),0);
+  const materials=done.reduce((s,x)=>s+(+x.material||0),0);
+  return `<div class="hero"><div class="row"><div><div class="small">DOCUMENTAÇÃO</div><h2>Relatórios</h2><div>Transforme o atendimento concluído em um relatório técnico organizado.</div></div></div></div>
+  <div class="grid">
+    <div class="card"><div class="small">SERVIÇOS CONCLUÍDOS</div><h2>${done.length}</h2></div>
+    <div class="card"><div class="small">RECEITA</div><h2>R$ ${money(revenue)}</h2></div>
+    <div class="card"><div class="small">MATERIAIS</div><h2>R$ ${money(materials)}</h2></div>
+  </div>
+  <div class="section"><h2>Relatórios técnicos</h2><div class="list">
+    ${done.length?done.slice(0,20).map(x=>`<div class="item day"><div class="row"><div><b>${esc(x.client||'Cliente')}</b><div class="sub">${dateBR(x.date)}${x.time?' • '+x.time:''}</div></div><span class="pill">${esc(x.status)}</span></div><div style="margin-top:8px"><b>${esc(x.type||'Serviço')}</b></div><div class="actions" style="margin-top:10px"><button class="primary" onclick="printReport('${x.id}')">Gerar relatório</button><button class="ghost" onclick="openExecution('${x.id}')">Ver atendimento</button></div></div>`).join(''):'<div class="card empty">Conclua um atendimento para gerar o primeiro relatório.</div>'}
+  </div></div>`;
+}
+function printReport(id){
+  const x=db.services.find(s=>s.id===id); if(!x)return;
+  const e=x.execution||{};
+  const checks={alimentacao:'Alimentação elétrica',pressao:'Pressão de trabalho',corrente:'Corrente de trabalho',dreno:'Dreno',estanqueidade:'Estanqueidade'};
+  const checkList=(e.checklist||[]).map(k=>`<li>✓ ${esc(checks[k]||k)}</li>`).join('');
+  const w=window.open('','_blank');
+  if(!w){alert('O navegador bloqueou a abertura do relatório. Permita pop-ups para este arquivo.');return;}
+  w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório Técnico - SoluCenter</title><style>
+  body{font-family:Arial,sans-serif;max-width:800px;margin:35px auto;padding:0 25px;color:#17252b}
+  header{border-bottom:3px solid #1486ad;padding-bottom:15px;margin-bottom:25px}h1{margin:0;color:#087ca4}h2{font-size:17px;margin:25px 0 8px;color:#087ca4}.box{border:1px solid #d9e1e5;border-radius:10px;padding:14px;margin:8px 0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.label{font-size:11px;color:#71838a;text-transform:uppercase}.value{font-size:15px;margin-top:4px}li{margin:6px 0}.total{font-size:22px;font-weight:bold}.footer{margin-top:45px;border-top:1px solid #ddd;padding-top:15px;font-size:11px;color:#71838a}@media print{body{margin:15px auto}}
+  </style></head><body>
+  <header><h1>❄ SoluCenter Gestão</h1><div>Climatização e Elétrica • Relatório Técnico</div></header>
+  <div class="grid"><div class="box"><div class="label">Cliente</div><div class="value">${esc(x.client||'—')}</div></div><div class="box"><div class="label">Data / Hora</div><div class="value">${dateBR(x.date)||'—'} ${x.time||''}</div></div></div>
+  <div class="box"><div class="label">Serviço</div><div class="value">${esc(x.type||'—')}</div><div class="label" style="margin-top:10px">Equipamento</div><div class="value">${esc(x.equipment||'—')}</div></div>
+  <h2>Diagnóstico</h2><div class="box">${esc(e.diagnosis||'Não informado.')}</div>
+  <h2>Testes e medições</h2><div class="box">${esc(e.tests||'Não informado.')}</div>
+  <h2>Serviço executado</h2><div class="box">${esc(e.work||'Não informado.')}</div>
+  <h2>Peças / materiais</h2><div class="box">${esc(e.parts||'Nenhum informado.')}</div>
+  <h2>Checklist</h2><div class="box"><ul>${checkList||'<li>Nenhum item marcado.</li>'}</ul></div>
+  <h2>Observações / recomendações</h2><div class="box">${esc(e.observations||'Nenhuma.')}</div>
+  <h2>Financeiro do atendimento</h2><div class="box"><div class="grid"><div><div class="label">Valor cobrado</div><div class="value">R$ ${money(x.price||0)}</div></div><div><div class="label">Materiais</div><div class="value">R$ ${money(x.material||0)}</div></div></div><hr><div class="total">Margem bruta: R$ ${money((x.price||0)-(x.material||0))}</div></div>
+  <div class="footer">SoluCenter Climatização e Elétrica • Documento gerado pelo SoluCenter Gestão FINAL v1.0<br>Este relatório pode ser impresso ou salvo como PDF pelo menu de impressão do aparelho.</div>
+  <script>window.onload=()=>setTimeout(()=>window.print(),250)</script><div style="text-align:center;padding:18px 10px 28px;color:#71838a;font-size:11px">SoluCenter Gestão FINAL v1.0 • Dados armazenados localmente neste aparelho.</div></body></html>`);
+  w.document.close();
+}
+
+function profitability(){
+ const s=db.services||[];
+ const groups={};
+ s.forEach(x=>{
+   const k=x.type||'Sem serviço definido';
+   if(!groups[k])groups[k]={n:0,r:0,c:0,received:0};
+   groups[k].n++; groups[k].r+=+x.price||0; groups[k].c=(+x.material||0)+(+x.travel||0)+(+x.otherCost||0);
+   if(x.paid==='Recebido')groups[k].received+=+x.price||0;
+ });
+ const rows=Object.entries(groups).map(([k,v])=>({...v,name:k,profit:v.r-v.c,margin:v.r?(v.r-v.c)/v.r*100:0})).sort((a,b)=>b.profit-a.profit);
+ const best=rows[0], worst=rows[rows.length-1];
+ return `<div class="hero"><div><div class="small">INTELIGÊNCIA FINANCEIRA</div><h2>Rentabilidade por serviço</h2><div>Compare o que você cobra com os custos registrados em cada tipo de atendimento.</div></div></div>
+ ${best?`<div class="grid"><div class="card"><div class="sub">Melhor resultado</div><h2>${esc(best.name)}</h2><div class="total">${money(best.profit)}</div><div class="sub">${best.margin.toFixed(1)}% de margem • ${best.n} serviço(s)</div></div><div class="card"><div class="sub">Menor resultado</div><h2>${esc(worst.name)}</h2><div class="total">${money(worst.profit)}</div><div class="sub">${worst.margin.toFixed(1)}% de margem • ${worst.n} serviço(s)</div></div></div>`:''}
+ <div class="section card"><h2>Comparativo</h2><div class="list">${rows.length?rows.map(v=>`<div class="item"><div class="row"><div><b>${esc(v.name)}</b><div class="sub">${v.n} serviço(s) • Receita ${money(v.r)} • Custos ${money(v.c)}</div></div><b>${money(v.profit)}</b></div><div class="sub" style="margin-top:7px">Margem: <b>${v.margin.toFixed(1)}%</b> • Recebido: ${money(v.received)}</div><div style="height:7px;background:#edf2f4;border-radius:9px;margin-top:9px;overflow:hidden"><div style="width:${Math.max(0,Math.min(100,v.margin))}%;height:100%;background:var(--blue)"></div></div></div>`).join(''):'<div class="empty">Ainda não há serviços suficientes para comparar. Registre alguns atendimentos com valor e custos.</div>'}</div></div>
+ <div class="section card"><h2>Como usar este indicador</h2><div class="sub">O aplicativo não define o preço do seu serviço. Ele mostra o resultado do preço que <b>você</b> informou, considerando os custos registrados.</div><div class="sub" style="margin-top:8px">Com mais dados reais, esta tela ficará cada vez mais precisa para apoiar suas decisões.</div></div>`;
+}
+
+window.openClientHistory=function(id){
+ const c=db.clients.find(x=>x.id===id); if(!c)return;
+ const sv=(db.services||[]).filter(x=>x.client===c.name);
+ modal('Ficha do cliente • '+esc(c.name),`
+   <div class="card"><div class="grid"><div><div class="small">CLIENTE</div><b>${esc(c.name)}</b></div><div><div class="small">TELEFONE</div><b>${esc(c.phone||'Não informado')}</b></div></div><div style="margin-top:10px"><div class="small">ENDEREÇO</div><div>${esc(c.address||'Não informado')}</div></div></div>
+   <div class="section"><div class="row"><h2>Equipamentos</h2><button class="primary" onclick="addEquipment('${id}')">+ Equipamento</button></div>
+   <div class="list">${(c.equipment||[]).length?(c.equipment||[]).map((e,i)=>`<div class="item"><div class="row"><b>${esc(e.type||'Equipamento')}</b><button class="primary" onclick="openEquipmentHistory('${id}',${i})">Histórico</button></div><div class="sub">${esc(e.brand||'')} ${esc(e.model||'')} ${e.btus? '• '+esc(e.btus)+' BTUs':''}</div><div class="sub">${esc(e.serial||'')}</div></div>`).join(''):'<div class="empty">Nenhum equipamento cadastrado.</div>'}</div></div>
+   <div class="section"><h2>Histórico de serviços</h2><div class="list">${sv.length?sv.slice().reverse().map(x=>`<div class="item"><div class="row"><b>${esc(x.type||'Serviço')}</b><span class="pill">${esc(x.status||'')}</span></div><div class="sub">${dateBR(x.date)} ${x.time||''} • ${money(x.price||0)}</div></div>`).join(''):'<div class="empty">Nenhum serviço vinculado a este cliente ainda.</div>'}</div></div>`);
+};
+window.addEquipment=function(id){
+ const c=db.clients.find(x=>x.id===id); if(!c)return;
+ modal('Novo equipamento',`
+ <div class="field"><label>Tipo</label><input id="et" placeholder="Split, K7, piso-teto..."></div>
+ <div class="grid"><div class="field"><label>Marca</label><input id="eb"></div><div class="field"><label>Modelo</label><input id="em"></div></div>
+ <div class="grid"><div class="field"><label>BTUs</label><input id="eu" placeholder="Ex.: 12000"></div><div class="field"><label>Nº de série</label><input id="es"></div></div>
+ <div class="actions"><button class="ghost" onclick="closeModal()">Cancelar</button><button class="green" onclick="saveEquipment('${id}')">Salvar equipamento</button></div>`);
+};
+window.saveEquipment=function(id){
+ const c=db.clients.find(x=>x.id===id); if(!c)return;
+ c.equipment=c.equipment||[];
+ c.equipment.push({type:$('et').value.trim(),brand:$('eb').value.trim(),model:$('em').value.trim(),btus:$('eu').value.trim(),serial:$('es').value.trim()});
+ save(); closeModal(); openClientHistory(id);
+};
+
+window.openEquipmentHistory=function(clientId,index){
+ const c=db.clients.find(x=>x.id===clientId); if(!c||!c.equipment||!c.equipment[index])return;
+ const e=c.equipment[index];
+ const sv=(db.services||[]).filter(x=>x.client===c.name && (
+   !e.model || !x.equipment || x.equipment.toLowerCase().includes((e.model||'').toLowerCase()) ||
+   !e.brand || x.equipment.toLowerCase().includes((e.brand||'').toLowerCase())
+ ));
+ modal('Histórico do equipamento',`
+  <div class="card"><h2>${esc(e.type||'Equipamento')}</h2><div class="grid">
+   <div><div class="small">Marca</div><b>${esc(e.brand||'—')}</b></div>
+   <div><div class="small">Modelo</div><b>${esc(e.model||'—')}</b></div>
+   <div><div class="small">Capacidade</div><b>${esc(e.btus||'—')} ${e.btus?'BTUs':''}</b></div>
+   <div><div class="small">Nº de série</div><b>${esc(e.serial||'—')}</b></div>
+  </div></div>
+  <div class="section"><h2>Informações técnicas</h2>
+   <div class="field"><label>Data de instalação</label><input id="ei" type="date" value="${e.installDate||''}"></div>
+   <div class="field"><label>Refrigerante</label><input id="eg" placeholder="R32, R410A, R22..." value="${esc(e.gas||'')}"></div>
+   <div class="field"><label>Observações permanentes</label><textarea id="en" placeholder="Tubulação, alimentação, particularidades, recomendações...">${esc(e.notes||'')}</textarea></div>
+   <button class="green" style="width:100%" onclick="saveEquipmentInfo('${clientId}',${index})">Salvar informações</button>
+  </div>
+  <div class="section"><h2>Histórico de atendimentos</h2><div class="list">${sv.length?sv.slice().reverse().map(x=>`<div class="item"><div class="row"><b>${esc(x.type||'Serviço')}</b><span class="pill">${esc(x.status||'')}</span></div><div class="sub">${dateBR(x.date)} ${x.time||''} • ${money(x.price||0)}</div>${x.execution&&x.execution.work?`<div style="margin-top:6px">${esc(x.execution.work)}</div>`:''}${x.execution&&x.execution.diagnosis?`<div class="sub" style="margin-top:5px">Diagnóstico: ${esc(x.execution.diagnosis)}</div>`:''}</div>`).join(''):'<div class="empty">Nenhum atendimento encontrado para este equipamento.</div>'}</div></div>`);
+};
+window.saveEquipmentInfo=function(clientId,index){
+ const c=db.clients.find(x=>x.id===clientId); if(!c)return;
+ const e=c.equipment[index]; e.installDate=$('ei').value; e.gas=$('eg').value.trim(); e.notes=$('en').value.trim();
+ save(); closeModal(); openClientHistory(clientId);
+};
+
+window.openServiceCatalog=function(){
+ const defaults=[
+ 'Instalação de split 9–12 mil BTUs','Instalação de split 12–30 mil BTUs','Instalação de split K7','Instalação de split piso-teto',
+ 'Desinstalação de split 9–12 mil BTUs','Desinstalação de split 18–30 mil BTUs','Desinstalação de split piso-teto/K7',
+ 'Lavagem de unidade evaporadora 9–12 mil BTUs','Lavagem de unidade condensadora 9–12 mil BTUs','Lavagem de unidade condensadora 12–30 mil BTUs','Lavagem de condensadora piso-teto/K7',
+ 'Retirada de placa inverter para conserto','Desmontagem e montagem de evaporadora/condensadora','Teste de estanqueidade com nitrogênio',
+ 'Desobstrução de sistema de dreno','Reparo de placa convencional','Infraestrutura: caixa de dreno, tubulação elétrica e cabo de comunicação',
+ 'Troca de isolação térmica','Teste de capacitor, pressão e corrente de trabalho','Visita técnica / diagnóstico'
+ ];
+ db.catalog=db.catalog||[];
+ defaults.forEach(name=>{if(!db.catalog.some(x=>x.name===name))db.catalog.push({name,price:'',category:'Serviço',active:true})});
+ save();
+ const rows=db.catalog.map((x,i)=>`<div class="item"><div class="row"><div><b>${esc(x.name)}</b><div class="sub">${esc(x.category||'Serviço')}</div></div><span class="pill">${x.active===false?'Inativo':'Ativo'}</span></div><div class="grid" style="margin-top:8px"><div class="field"><label>Seu preço de referência (R$)</label><input id="cp${i}" type="number" step="0.01" value="${x.price||''}" placeholder="Defina quando quiser"></div><button class="ghost" style="align-self:end" onclick="saveCatalogItem(${i})">Salvar</button></div></div>`).join('');
+ modal('Catálogo de serviços',`<div class="notice">Os valores são <b>editáveis</b>. O sistema não fixa o preço do seu trabalho.</div><div class="list">${rows}</div>`);
+};
+window.saveCatalogItem=function(i){
+ db.catalog[i].price=+$('cp'+i).value||0;
+ save(); openServiceCatalog();
+};
+
+function orders(){
+ db.orders=db.orders||[];
+ const open=db.orders.filter(x=>!['Aprovado','Recusado'].includes(x.status));
+ const approved=db.orders.filter(x=>x.status==='Aprovado');
+ return `<div class="hero"><div class="row"><div><div class="small">FLUXO COMERCIAL</div><h2>Orçamentos & OS</h2><div>Registre a solicitação, envie o valor e transforme a aprovação em serviço.</div></div><button class="green" onclick="newOrder()">+ Novo orçamento</button></div></div>
+ <div class="grid"><div class="card"><div class="sub">Em negociação</div><div class="total">${open.length}</div></div><div class="card"><div class="sub">Aprovados</div><div class="total">${approved.length}</div></div></div>
+ <div class="section card"><h2>Orçamentos</h2><div class="list">${db.orders.length?db.orders.slice().reverse().map(orderCard).join(''):'<div class="empty">Nenhum orçamento cadastrado.</div>'}</div></div>`;
+}
+function orderCard(x){
+ return `<div class="item"><div class="row"><div><b>${esc(x.client||'Cliente')}</b><div class="sub">${esc(x.service||'Serviço')} • ${dateBR(x.date)||'Sem data'}</div></div><span class="pill ${x.status==='Aprovado'?'':'blue'}">${esc(x.status||'Orçamento')}</span></div>
+ <div style="margin-top:7px"><b>${money(x.total||0)}</b><div class="sub">${esc(x.notes||'')}</div></div>
+ <div class="actions" style="margin-top:9px"><button class="primary" onclick="approveOrder('${x.id}')">Aprovar e agendar</button><button class="ghost" onclick="editOrder('${x.id}')">Editar</button></div></div>`;
+}
+window.newOrder=function(){
+ modal('Novo orçamento',`<div class="field"><label>Cliente</label><input id="oc" placeholder="Nome do cliente"></div>
+ <div class="field"><label>Serviço</label><input id="os" placeholder="Ex.: instalação split 12.000 BTUs"></div>
+ <div class="grid"><div class="field"><label>Data prevista</label><input id="od" type="date"></div><div class="field"><label>Valor (R$)</label><input id="ov" type="number" step="0.01"></div></div>
+ <div class="field"><label>Observações / condições</label><textarea id="on" placeholder="Material incluso, prazo, condições de pagamento..."></textarea></div>
+ <button class="green" style="width:100%" onclick="saveOrder()">Salvar orçamento</button>`);
+};
+window.saveOrder=function(){
+ db.orders=db.orders||[];
+ db.orders.push({id:uid(),client:$('oc').value.trim(),service:$('os').value.trim(),date:$('od').value,total:+$('ov').value||0,notes:$('on').value.trim(),status:'Orçamento'});
+ save();closeModal();page='orders';render();
+};
+window.approveOrder=function(id){
+ const o=db.orders.find(x=>x.id===id);if(!o)return;
+ o.status='Aprovado';
+ db.services=db.services||[];
+ db.services.push({id:uid(),client:o.client,type:o.service,date:o.date||new Date().toISOString().slice(0,10),time:'',price:o.total||0,material:0,travel:0,otherCost:0,status:'Agendado',paid:'Pendente',equipment:''});
+ save();page='agenda';render();
+};
+window.editOrder=function(id){
+ const o=db.orders.find(x=>x.id===id);if(!o)return;
+ modal('Editar orçamento',`<div class="field"><label>Cliente</label><input id="oc" value="${esc(o.client||'')}"></div><div class="field"><label>Serviço</label><input id="os" value="${esc(o.service||'')}"></div><div class="grid"><div class="field"><label>Data prevista</label><input id="od" type="date" value="${o.date||''}"></div><div class="field"><label>Valor (R$)</label><input id="ov" type="number" step="0.01" value="${o.total||0}"></div></div><div class="field"><label>Observações</label><textarea id="on">${esc(o.notes||'')}</textarea></div><button class="green" style="width:100%" onclick="updateOrder('${id}')">Salvar alterações</button>`);
+};
+window.updateOrder=function(id){
+ const o=db.orders.find(x=>x.id===id);if(!o)return;
+ o.client=$('oc').value.trim();o.service=$('os').value.trim();o.date=$('od').value;o.total=+$('ov').value||0;o.notes=$('on').value.trim();
+ save();closeModal();page='orders';render();
+};
+
+function finalSummary(){
+ const services=db.services||[], expenses=db.expenses||[], clients=db.clients||[];
+ const revenue=services.reduce((s,x)=>s+(+x.price||0),0);
+ const serviceCosts=services.reduce((s,x)=>s+(+x.material||0)+(+x.travel||0)+(+x.otherCost||0),0);
+ const general=expenses.reduce((s,x)=>s+(+x.value||0),0);
+ const costs=serviceCosts+general;
+ const profit=revenue-costs;
+ const received=services.filter(x=>x.paid==='Recebido').reduce((s,x)=>s+(+x.price||0),0);
+ const pending=revenue-received;
+ const done=services.filter(x=>x.status==='Concluído').length;
+ const scheduled=services.filter(x=>x.status==='Agendado').length;
+ const margin=revenue?profit/revenue*100:0;
+ return `<div class="hero"><div><div class="small">SOLUCENTER GESTÃO • FINAL</div><h2>Visão geral do negócio</h2><div>Uma única tela para saber como está a operação.</div></div></div>
+ <div class="grid cards">
+  <div class="card"><div class="sub">Clientes</div><div class="total">${clients.length}</div></div>
+  <div class="card"><div class="sub">Serviços concluídos</div><div class="total">${done}</div></div>
+  <div class="card"><div class="sub">Agendados</div><div class="total">${scheduled}</div></div>
+  <div class="card"><div class="sub">Margem</div><div class="total">${margin.toFixed(1)}%</div></div>
+ </div>
+ <div class="grid">
+  <div class="card"><div class="sub">Faturamento</div><div class="total">${money(revenue)}</div></div>
+  <div class="card"><div class="sub">Custos</div><div class="total">${money(costs)}</div></div>
+  <div class="card"><div class="sub">Lucro</div><div class="total">${money(profit)}</div></div>
+  <div class="card"><div class="sub">A receber</div><div class="total">${money(pending)}</div></div>
+ </div>
+ <div class="section card"><h2>Fluxo do negócio</h2><div class="actions">
+  <button class="primary" onclick="newOrder()">1. Novo orçamento</button>
+  <button class="primary" onclick="openService()">2. Agendar serviço</button>
+  <button class="primary" onclick="page='exec';render()">3. Fazer atendimento</button>
+  <button class="primary" onclick="page='reports';render()">4. Gerar relatório</button>
+  <button class="primary" onclick="page='finance';render()">5. Conferir financeiro</button>
+ </div></div>
+ <div class="section card"><h2>Princípio do sistema</h2><div class="sub">Os preços são definidos por você. O SoluCenter organiza os dados e transforma seus registros em agenda, histórico, custos, faturamento, lucro e relatórios.</div></div>`;
+}
+function modal(title,body){$('sheet').innerHTML=`<div class="row"><h2 style="margin-top:0">${title}</h2><button class="ghost" onclick="closeModal()">Fechar</button></div>${body}`;$('modal').classList.add('show')}
+window.closeModal=()=>{$('modal').classList.remove('show')};
+window.openService=(id='')=>{const x=db.services.find(s=>s.id===id)||{client:'',type:'',equipment:'',date:selectedDate||today(),time:'',price:0,material:0,travel:0,other:0,status:'Agendado',paid:false};let opts=db.clients.map(c=>`<option value="${esc(c.name)}" ${c.name===x.client?'selected':''}>${esc(c.name)}</option>`).join('');modal(id?'Editar serviço':'Novo agendamento',`<div class="notice">O valor é livre. Você decide o preço conforme dificuldade, acesso, material e condições de cada serviço.</div><div class="field"><label>Cliente</label><select id="fc"><option value="">Selecione um cliente</option>${opts}</select><button class="ghost" style="margin-top:7px" onclick="closeModal();openClient()">+ Cadastrar cliente</button></div><div class="field"><label>Serviço</label><input id="ft" value="${esc(x.type)}" placeholder="Ex.: Instalação de split 9 a 12 mil BTUs"></div><div class="field"><label>Equipamento / referência</label><input id="fe" value="${esc(x.equipment)}" placeholder="Ex.: SC-0212 • Philco 12k"></div><div class="grid"><div class="field"><label>Data</label><input id="fd" type="date" value="${x.date}"></div><div class="field"><label>Hora</label><input id="fh" type="time" value="${x.time}"></div></div><div class="field"><label>Status</label><select id="fs"><option ${x.status==='Agendado'?'selected':''}>Agendado</option><option ${x.status==='Em execução'?'selected':''}>Em execução</option><option ${x.status==='Concluído'?'selected':''}>Concluído</option><option ${x.status==='Cancelado'?'selected':''}>Cancelado</option></select></div><div class="field"><label>Valor cobrado (R$)</label><input id="fp" type="number" step="0.01" value="${x.price}"></div><div class="grid"><div class="field"><label>Materiais/peças (R$)</label><input id="fm" type="number" step="0.01" value="${x.material}"></div><div class="field"><label>Deslocamento (R$)</label><input id="fv" type="number" step="0.01" value="${x.travel}"></div></div><div class="field"><label>Outros custos (R$)</label><input id="fo" type="number" step="0.01" value="${x.other}"></div><div class="card"><b>Lucro estimado:</b> <span id="pv" class="total">${money(x.price-x.material-x.travel-x.other)}</span></div><button class="green" style="width:100%;margin-top:12px" onclick="saveService('${id}')">Salvar serviço</button>`);['fp','fm','fv','fo'].forEach(i=>$(i).addEventListener('input',()=>{$('pv').textContent=money(+$('fp').value-+$('fm').value-+$('fv').value-+$('fo').value)}))}
+window.saveService=id=>{const client=$('fc').value.trim();if(!client)return alert('Selecione um cliente.');const x={id:id||uid(),client,type:$('ft').value.trim(),equipment:$('fe').value.trim(),date:$('fd').value,time:$('fh').value,price:+$('fp').value||0,material:+$('fm').value||0,travel:+$('fv').value||0,other:+$('fo').value||0,status:$('fs').value,paid:false};if(id){const i=db.services.findIndex(s=>s.id===id);x.paid=db.services[i]?.paid===true;db.services[i]=x}else db.services.push(x);selectedDate=x.date;save();closeModal();render()}
+window.markReceived=id=>{const x=db.services.find(s=>s.id===id);if(x){x.paid=true;save();render()}};
+window.openExpense=()=>modal('Nova despesa',`<div class="field"><label>Descrição</label><input id="ed" placeholder="Ex.: gasolina, ferramenta, telefone"></div><div class="grid"><div class="field"><label>Valor (R$)</label><input id="ev" type="number" step="0.01"></div><div class="field"><label>Data</label><input id="et" type="date" value="${today()}"></div></div><div class="field"><label>Categoria</label><select id="ec"><option>Combustível</option><option>Peças</option><option>Material</option><option>Ferramentas</option><option>Impostos</option><option>Administrativo</option><option>Outros</option></select></div><button class="green" style="width:100%" onclick="saveExpense()">Salvar despesa</button>`);window.saveExpense=()=>{if(!$('ed').value.trim())return alert('Informe a descrição.');db.expenses.push({id:uid(),description:$('ed').value.trim(),value:+$('ev').value||0,date:$('et').value,category:$('ec').value});save();closeModal();render()};
+window.openClient=(id='')=>{if(id){openClientEdit(id);return}modal('Novo cliente',`<div class="field"><label>Nome / empresa</label><input id="cn"></div><div class="field"><label>Telefone / WhatsApp</label><input id="cp"></div><div class="field"><label>Cidade / endereço</label><input id="cc"></div><button class="green" style="width:100%" onclick="saveClient()">Salvar cliente</button>`)};
+window.openClientEdit=id=>{const c=db.clients.find(x=>x.id===id);if(!c)return;modal('Editar cliente',`<div class="field"><label>Nome / empresa</label><input id="cn" value="${esc(c.name)}"></div><div class="field"><label>Telefone / WhatsApp</label><input id="cp" value="${esc(c.phone||'')}"></div><div class="field"><label>Cidade / endereço</label><input id="cc" value="${esc(c.city||'')}"></div><button class="green" style="width:100%" onclick="saveClient('${id}')">Salvar alterações</button>`)};
+window.saveClient=id=>{const name=$('cn').value.trim();if(!name)return alert('Informe o nome.');if(id){const c=db.clients.find(x=>x.id===id);if(c){db.services.forEach(s=>{if(s.client===c.name)s.client=name});c.name=name;c.phone=$('cp').value.trim();c.city=$('cc').value.trim()}}else db.clients.push({id:uid(),name,phone:$('cp').value.trim(),city:$('cc').value.trim()});save();closeModal();render()};window.delClient=id=>{if(confirm('Excluir cliente? Os serviços existentes serão mantidos.')){db.clients=db.clients.filter(x=>x.id!==id);save();render()}};
+window.openCatalog=()=>modal('Novo serviço no catálogo',`<div class="field"><label>Nome do serviço</label><input id="catn" placeholder="Ex.: Instalação de split 9 a 12 mil BTUs"></div><div class="field"><label>Preço de referência (R$)</label><input id="catp" type="number" step="0.01"></div><div class="sub">A referência não trava o preço do atendimento.</div><button class="green" style="width:100%;margin-top:12px" onclick="saveCatalog()">Salvar</button>`);window.saveCatalog=()=>{if(!$('catn').value.trim())return alert('Informe o serviço.');db.catalog.push({id:uid(),name:$('catn').value.trim(),price:+$('catp').value||0});save();closeModal();render()};
+window.backup=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(db,null,2)],{type:'application/json'}));a.download='solucenter-backup-final.json';a.click()};
+window.addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()=>{page=b.dataset.p;render()}));render();
+})();
+</script>
+<div style="text-align:center;padding:18px 10px 28px;color:#71838a;font-size:11px">SoluCenter Gestão FINAL v1.0 • Dados armazenados localmente neste aparelho.</div></body></html>
