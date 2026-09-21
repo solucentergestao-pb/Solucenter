@@ -1,12 +1,11 @@
-// API pública de produção da SoluCenter.
-// Mantemos a URL de produção fixa para impedir que uma variável NEXT_PUBLIC_API_URL
-// incorreta no build do frontend quebre o login no navegador.
-const PRODUCTION_API='https://solucenter-api-04bn.onrender.com/api/v1';
+const DIRECT_API='https://solucenter-api-04bn.onrender.com/api/v1';
 
 function resolveApiBase(){
  const configured=(process.env.NEXT_PUBLIC_API_URL??'').trim().replace(/\/$/,'');
- if(process.env.NODE_ENV==='production') return PRODUCTION_API;
- if(!configured) return PRODUCTION_API;
+ // In production, keep browser requests same-origin. Next.js rewrites /backend/*
+ // to the Render API server, eliminating browser CORS/network failures.
+ if(process.env.NODE_ENV==='production') return '/backend/api/v1';
+ if(!configured) return DIRECT_API;
  return configured.endsWith('/api/v1')?configured:`${configured}/api/v1`;
 }
 
