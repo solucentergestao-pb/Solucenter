@@ -16,8 +16,12 @@ async function main(){
   for(const code of codes as string[]){const perm=await prisma.permission.findUniqueOrThrow({where:{code}});await prisma.rolePermission.upsert({where:{roleId_permissionId:{roleId:role.id,permissionId:perm.id}},update:{},create:{roleId:role.id,permissionId:perm.id}})}
  }
  const adminRole=await prisma.role.findUniqueOrThrow({where:{companyId_name:{companyId:company.id,name:'ADMIN'}}});
- const email=process.env.SEED_ADMIN_EMAIL??'admin@solucenter.local'; const password=process.env.SEED_ADMIN_PASSWORD??'TroqueEstaSenha123!';
- await prisma.user.upsert({where:{companyId_email:{companyId:company.id,email}},update:{roleId:adminRole.id,status:'ACTIVE'},create:{companyId:company.id,roleId:adminRole.id,name:'Administrador SoluCenter',email,passwordHash:await bcrypt.hash(password,12)}});
- console.log(`Seed concluído. Admin: ${email}. Altere SEED_ADMIN_PASSWORD antes de produção.`)
+ const email=process.env.SEED_ADMIN_EMAIL;
+ const password=process.env.SEED_ADMIN_PASSWORD;
+ if(process.env.NODE_ENV==='production'&&(!email||!password||password.length<12)) throw new Error('Credenciais seguras do administrador são obrigatórias em produção');
+ const adminEmail=email??'admin@solucenter.local';
+ const adminPassword=password??'TroqueEstaSenha123!';
+ await prisma.user.upsert({where:{companyId_email:{companyId:company.id,email:adminEmail}},update:{roleId:adminRole.id,status:'ACTIVE'},create:{companyId:company.id,roleId:adminRole.id,name:'Administrador SoluCenter',email:adminEmail,passwordHash:await bcrypt.hash(adminPassword,12)}});
+ console.log(`Seed concluído. Admin: ${adminEmail}.`)
 }
 main().finally(()=>prisma.$disconnect());
