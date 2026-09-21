@@ -1,0 +1,1 @@
+{"name":"db","private":true,"type":"module","scripts":{"generate":"prisma generate --schema schema.prisma","push":"prisma db push --schema schema.prisma","seed":"tsx seed.ts"},"dependencies":{"@prisma/client":"6.19.3","bcryptjs":"latest"},"devDependencies":{"prisma":"6.19.3","tsx":"latest","typescript":"latest"},"prisma":{"seed":"tsx seed.ts"}}

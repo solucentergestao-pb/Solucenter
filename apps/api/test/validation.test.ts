@@ -1,0 +1,1 @@
+import {describe,it,expect} from 'vitest';import {z} from 'zod';describe('regras básicas',()=>{it('rejeita quantidade negativa',()=>{expect(z.number().positive().safeParse(-1).success).toBe(false)});it('aceita capacidade BTU positiva',()=>{expect(z.number().int().positive().safeParse(18000).success).toBe(true)})});

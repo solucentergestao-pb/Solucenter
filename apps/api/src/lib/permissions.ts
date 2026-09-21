@@ -1,0 +1,3 @@
+import { FastifyReply, FastifyRequest } from 'fastify';
+import { AuthUser } from './auth.js';
+export function requirePermission(code:string){return async(req:FastifyRequest,reply:FastifyReply)=>{await req.jwtVerify();const u=req.user as AuthUser;if(u.role==='ADMIN'||u.permissions?.includes(code))return;return reply.code(403).send({error:{code:'FORBIDDEN',message:'Você não tem permissão para esta ação.'}})}}

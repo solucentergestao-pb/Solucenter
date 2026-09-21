@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: solucenter_hml
+      POSTGRES_USER: solucenter
+      POSTGRES_PASSWORD: solucenter_hml_change_me
+    ports: ["5433:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U solucenter -d solucenter_hml"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes: ["solucenter_hml:/var/lib/postgresql/data"]
+volumes:
+  solucenter_hml:

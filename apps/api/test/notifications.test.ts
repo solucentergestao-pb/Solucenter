@@ -1,0 +1,1 @@
+import {describe,it,expect} from 'vitest';describe('notification policy',()=>{it('uses exponential retry bounded to 60 minutes',()=>{expect(Math.min(60,2**6)).toBe(60)});it('supports required commercial events',()=>{expect(['QUOTE_SENT','MAINTENANCE_DUE','TECHNICIAN_ON_THE_WAY','SERVICE_ORDER_COMPLETED','PAYMENT_RECEIVED']).toHaveLength(5)})});

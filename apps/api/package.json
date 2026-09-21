@@ -1,0 +1,38 @@
+{
+  "name": "api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "seed": "tsx ../../packages/db/seed.ts",
+    "typecheck": "tsc --noEmit",
+    "prisma:validate": "prisma validate --schema ../../packages/db/schema.prisma",
+    "prisma:generate": "prisma generate --schema ../../packages/db/schema.prisma",
+    "homolog:gate": "bash ../../scripts/homolog-gate.sh"
+  },
+  "dependencies": {
+    "@fastify/cors": "latest",
+    "@fastify/jwt": "latest",
+    "@fastify/multipart": "latest",
+    "@fastify/static": "latest",
+    "@prisma/client": "6.19.3",
+    "bcryptjs": "latest",
+    "fastify": "latest",
+    "qrcode": "latest",
+    "zod": "latest",
+    "pdfkit": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/qrcode": "latest",
+    "tsx": "latest",
+    "typescript": "latest",
+    "vitest": "latest",
+    "@types/pdfkit": "latest",
+    "prisma": "6.19.3"
+  }
+}

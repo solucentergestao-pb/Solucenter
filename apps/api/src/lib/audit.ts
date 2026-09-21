@@ -1,0 +1,2 @@
+import { FastifyRequest } from 'fastify'; import { prisma } from './prisma.js'; import { AuthUser } from './auth.js';
+export async function audit(req:FastifyRequest,action:any,entityType:string,entityId?:string,newValues?:any,oldValues?:any){const u=req.user as AuthUser;await prisma.auditLog.create({data:{companyId:u.companyId,userId:u.id,action,entityType,entityId,newValues,oldValues,ipAddress:req.ip,userAgent:String(req.headers['user-agent']??'')}})}

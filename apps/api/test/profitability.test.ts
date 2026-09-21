@@ -1,0 +1,1 @@
+import {describe,it,expect} from 'vitest';import {profitability} from '../src/lib/profitability';describe('rentabilidade',()=>{it('calcula lucro e margem',()=>{expect(profitability(1500,420,220,80,30,0)).toEqual({revenue:1500,totalCost:750,profit:750,margin:50})});it('evita divisão por zero',()=>{expect(profitability(0,10,0,0,0,0).margin).toBe(0)})});

@@ -1,0 +1,1 @@
+import './globals.css'; export default function Layout({children}:{children:React.ReactNode}){return <html lang='pt-BR'><body><div className='top'>❄ SOLUCENTER · Climatização & Elétrica</div>{children}</body></html>}

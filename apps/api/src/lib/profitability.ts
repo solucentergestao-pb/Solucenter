@@ -1,0 +1,1 @@
+export function profitability(revenue:number,materials:number,labor:number,travel:number,fees:number,other:number){const totalCost=materials+labor+travel+fees+other;const profit=revenue-totalCost;return{revenue,totalCost,profit,margin:revenue?Number((profit/revenue*100).toFixed(2)):0}}

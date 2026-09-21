@@ -1,0 +1,3 @@
+const BASE=process.env.NEXT_PUBLIC_API_URL??'http://localhost:3333/api/v1';
+export async function api(path:string,options:RequestInit={}){const token=typeof window!=='undefined'?localStorage.getItem('token'):null;const isForm=options.body instanceof FormData;const r=await fetch(BASE+path,{...options,headers:{...(!isForm?{'Content-Type':'application/json'}:{}),...(token?{Authorization:`Bearer ${token}`}:{ }),...(options.headers??{})}});const ct=r.headers.get('content-type')??'';const body=ct.includes('json')?await r.json().catch(()=>null):await r.blob();if(!r.ok)throw new Error((body as any)?.error?.message??'Erro na API');return body}
+export const API_BASE=BASE;
