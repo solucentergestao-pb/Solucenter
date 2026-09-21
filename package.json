@@ -12,11 +12,12 @@
     "prisma:validate": "prisma validate --schema packages/db/schema.prisma",
     "prisma:generate": "prisma generate --schema packages/db/schema.prisma",
     "prisma:migrate:deploy": "prisma migrate deploy --schema packages/db/schema.prisma",
+    "prisma:seed": "npm --workspace packages/db run seed",
     "typecheck": "npm --workspace apps/api run typecheck && npm --workspace apps/web run typecheck",
     "test": "npm --workspace apps/api test",
     "build": "npm run prisma:generate && npm --workspace apps/api run build",
     "build:web": "npm --workspace apps/web run build",
-    "start": "npm --workspace apps/api run start"
+    "start": "npm run prisma:seed && npm --workspace apps/api run start"
   },
   "prisma": {
     "schema": "packages/db/schema.prisma"
