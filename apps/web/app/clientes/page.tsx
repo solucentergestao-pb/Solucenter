@@ -46,7 +46,7 @@ export default function Clientes(){
    </form>
    <div className="card">
     <h3>Clientes cadastrados</h3>
-    {list.map(c=><div key={c.id} style={{padding:'10px 0',borderBottom:'1px solid #eee'}}><b>{c.name}</b><br/><small>{c.code} · {c.units?.length??0} unidade(s)</small></div>)}
+    {list.map(c=><div key={c.id} style={{padding:'10px 0',borderBottom:'1px solid #eee'}}><a href={'/clientes/'+c.id}><b>{c.name}</b></a><br/><small>{c.code} · {c.units?.length??0} unidade(s)</small></div>)}
    </div>
   </div>
  </main>
