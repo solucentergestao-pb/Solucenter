@@ -1,0 +1,42 @@
+name: Operational integration
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  postgres-cycle:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: solucenter
+          POSTGRES_PASSWORD: isolated_ci_only
+          POSTGRES_DB: solucenter_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U solucenter -d solucenter_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://solucenter:isolated_ci_only@127.0.0.1:5432/solucenter_test
+      TEST_DATABASE_URL: postgresql://solucenter:isolated_ci_only@127.0.0.1:5432/solucenter_test
+      JWT_SECRET: isolated-ci-secret-not-used-for-any-production-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run prisma:validate
+      - run: npm run prisma:generate
+      - run: npm run prisma:migrate:deploy
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run build:web
