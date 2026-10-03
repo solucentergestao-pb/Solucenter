@@ -66,3 +66,5 @@ Nova entrega em fix/operational-security, PR #2, baseada no PR #1:
 - Integração Render localizada, ainda sem conexão confirmada. Necessária para verificar logs, deploys e dados reais de produção.
 
 Pontos difíceis restantes para auditoria: concorrência em pagamentos e faturamento; propriedade de relações nas cobranças manuais; armazenamento de fotos em produção; migrations no banco existente; integridade dos caminhos de navegação do fluxo operacional.
+
+Atualização adicional: Next.js fixado em 16.3.8, removendo a versão afetada pelo aviso GHSA-vcvr-r3jv-pc5j. Build web e typecheck locais aprovados. Não se encontrou uso de next/og ImageResponse neste projeto. Pendência de auditoria: deepmerge-ts na cadeia do Prisma CLI; investigar atualização compatível, sem downgrade forçado do Prisma.
