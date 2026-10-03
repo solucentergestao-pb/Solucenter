@@ -9,6 +9,8 @@ export default function Cliente() {
   const id = params?.id;
 
   const [c, setC] = useState<any>();
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   const [u, setU] = useState({
     name: "",
     cep: "",
@@ -25,9 +27,14 @@ export default function Cliente() {
     sector: "",
   });
 
-  const load = () => {
+  const load = async () => {
     if (!id) return;
-    api("/customers/" + id).then(setC);
+    try {
+      setC(await api("/customers/" + id));
+      setError("");
+    } catch (err: any) {
+      setError(err?.message ?? "Não foi possível carregar o cliente.");
+    }
   };
 
   useEffect(() => {
@@ -36,8 +43,10 @@ export default function Cliente() {
 
   async function addUnit(ev: any) {
     ev.preventDefault();
-    if (!id) return;
-
+    if (!id || busy) return;
+    setBusy(true);
+    setError("");
+    try {
     await api("/customers/" + id + "/units", {
       method: "POST",
       body: JSON.stringify(u),
@@ -53,12 +62,18 @@ export default function Cliente() {
       state: "",
     });
 
-    load();
+    await load();
+    } catch (err: any) {
+      setError(err?.message ?? "Não foi possível salvar a unidade.");
+    } finally { setBusy(false); }
   }
 
   async function addEnv(ev: any) {
     ev.preventDefault();
-
+    if (!e.unitId || busy) return;
+    setBusy(true);
+    setError("");
+    try {
     await api("/units/" + e.unitId + "/environments", {
       method: "POST",
       body: JSON.stringify({
@@ -75,14 +90,18 @@ export default function Cliente() {
       sector: "",
     });
 
-    load();
+    await load();
+    } catch (err: any) {
+      setError(err?.message ?? "Não foi possível salvar o ambiente.");
+    } finally { setBusy(false); }
   }
 
-  if (!id || !c) return <main>Carregando...</main>;
+  if (!id || !c) return <main>{error ? <><p className="error" role="alert">{error}</p><button onClick={load}>Tentar novamente</button></> : "Carregando..."}</main>;
 
   return (
     <main>
       <h1>{c.name}</h1>
+      {error && <p className="error" role="alert">{error}</p>}
 
       <section className="card">
         <h2>Nova unidade</h2>
@@ -92,6 +111,9 @@ export default function Cliente() {
             (k) => (
               <input
                 key={k}
+                required={k === "name"}
+                minLength={k === "name" ? 2 : undefined}
+                maxLength={k === "state" ? 2 : undefined}
                 placeholder={k === "name" ? "Nome da unidade" : k.toUpperCase()}
                 value={(u as any)[k]}
                 onChange={(x) => setU({ ...u, [k]: x.target.value })}
@@ -99,7 +121,7 @@ export default function Cliente() {
             )
           )}
 
-          <button>Salvar unidade</button>
+          <button disabled={busy}>{busy ? "Salvando…" : "Salvar unidade"}</button>
         </form>
       </section>
 
@@ -108,6 +130,7 @@ export default function Cliente() {
 
         <form onSubmit={addEnv} className="grid">
           <select
+            required
             value={e.unitId}
             onChange={(x) => setE({ ...e, unitId: x.target.value })}
           >
@@ -121,6 +144,8 @@ export default function Cliente() {
           </select>
 
           <input
+            required
+            minLength={2}
             placeholder="Ambiente (ex.: Sala Maker)"
             value={e.name}
             onChange={(x) => setE({ ...e, name: x.target.value })}
@@ -138,7 +163,7 @@ export default function Cliente() {
             onChange={(x) => setE({ ...e, sector: x.target.value })}
           />
 
-          <button>Salvar ambiente</button>
+          <button disabled={busy || !e.unitId}>{busy ? "Salvando…" : "Salvar ambiente"}</button>
         </form>
       </section>
 
