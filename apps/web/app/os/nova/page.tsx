@@ -4,10 +4,10 @@ import {api} from '../../../lib/api';
 import OsPhotoUpload from '../../../components/OsPhotoUpload';
 
 export default function NovaOS(){
- const[step,setStep]=useState(1),[customers,setCustomers]=useState<any[]>([]),[materials,setMaterials]=useState<any[]>([]),[equipment,setEquipment]=useState<any[]>([]),[created,setCreated]=useState<any>(null);
+ const[step,setStep]=useState(1),[customers,setCustomers]=useState<any[]>([]),[materials,setMaterials]=useState<any[]>([]),[equipment,setEquipment]=useState<any[]>([]),[serviceTypes,setServiceTypes]=useState<any[]>([]),[created,setCreated]=useState<any>(null);
  const[error,setError]=useState(''),[busy,setBusy]=useState(false),[completed,setCompleted]=useState<any>(null),[profit,setProfit]=useState<any>(null),[dueDate,setDueDate]=useState('');
- const[f,setF]=useState<any>({customerId:'',unitId:'',environmentId:'',equipmentId:'',service:'CORRETIVA',priority:'NORMAL',reportedProblem:'',technicalDiagnosis:'',performedService:'',recommendations:'',finalValue:0,laborCost:0,travelCost:0,feesCost:0,otherCost:0,measurements:{},materialId:'',materialQty:1});
- useEffect(()=>{Promise.all([api('/customers'),api('/materials'),api('/equipment')]).then(([c,m,e]:any)=>{setCustomers(c);setMaterials(m);setEquipment(e)}).catch((e:any)=>setError(e.message))},[]);
+ const[f,setF]=useState<any>({customerId:'',unitId:'',environmentId:'',equipmentId:'',serviceTypeId:'',priority:'NORMAL',reportedProblem:'',technicalDiagnosis:'',performedService:'',recommendations:'',finalValue:0,laborCost:0,travelCost:0,feesCost:0,otherCost:0,measurements:{},materialId:'',materialQty:1});
+ useEffect(()=>{Promise.all([api('/customers'),api('/materials'),api('/equipment'),api('/service-orders/service-types')]).then(([c,m,e,s]:any)=>{setCustomers(c);setMaterials(m);setEquipment(e);setServiceTypes(s)}).catch((e:any)=>setError(e.message))},[]);
  const customer=customers.find(x=>x.id===f.customerId);
  const unit=customer?.units?.find((x:any)=>x.id===f.unitId);
  const environments=unit?.environments??[];
