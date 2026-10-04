@@ -1,7 +1,7 @@
 # SOLUCENTER — Plano e acompanhamento de conclusão
 Data-base: 03/10/2026, America/Fortaleza.
 Repositório: solucentergestao-pb/Solucenter.
-Entrega atual: https://github.com/solucentergestao-pb/Solucenter/pull/1 (aberta, ainda não integrada nem publicada).
+Entrega atual: https://github.com/solucentergestao-pb/Solucenter/pull/3 (branch fix/financial-integrity, baseada no PR #2; ainda não integrada nem publicada).
 
 ## O que o percentual significa
 Índice de cumprimento de marcos de entrega da V1, com pesos definidos hoje. Não é estimativa de horas, quantidade de código correta nem porcentagem de funcionalidades operacionais. A existência de código recebe crédito apenas no marco de estrutura disponível; não implica funcionamento. Não há percentual global histórico anterior confiável para comparação. A linha de base é conservadora e provisória: 40/100 pontos reconhecidos e 60/100 ainda não comprovados. Pode ser revisada para baixo se a auditoria invalidar marcos. Não converter ausência de evidência em confirmação de falha.
@@ -68,3 +68,19 @@ Nova entrega em fix/operational-security, PR #2, baseada no PR #1:
 Pontos difíceis restantes para auditoria: concorrência em pagamentos e faturamento; propriedade de relações nas cobranças manuais; armazenamento de fotos em produção; migrations no banco existente; integridade dos caminhos de navegação do fluxo operacional.
 
 Atualização adicional: Next.js fixado em 16.3.8, removendo a versão afetada pelo aviso GHSA-vcvr-r3jv-pc5j. Build web e typecheck locais aprovados. Não se encontrou uso de next/og ImageResponse neste projeto. Pendência de auditoria: deepmerge-ts na cadeia do Prisma CLI; investigar atualização compatível, sem downgrade forçado do Prisma.
+
+## Execução de 04/10/2026 — integridade financeira
+Meta do ciclo: eliminar pagamento com saldo sobrescrito, faturamento duplicado e cobrança com vínculos de cliente/empresa incorretos.
+- Pagamento reivindica atomicamente saldo/status dentro da transação antes de gravar o registro. Requisição desatualizada recebe 409.
+- Faturamento de OS e cobrança manual compartilham a transição condicional COMPLETED → INVOICED; somente uma requisição pode gerar cobrança.
+- Cobrança manual valida cliente, OS e orçamento dentro da transação e preserva histórico.
+- Endpoint de faturamento exige finance.write; técnico sem essa permissão é bloqueado.
+- Valores monetários devem respeitar Decimal(12,2); frações de centavo são rejeitadas.
+- Cenários PostgreSQL novos: pagamentos integrais concorrentes, parciais com conservação de saldo, corrida entre dois endpoints de faturamento, vínculos estrangeiros/inconsistentes, isolamento/permissões e centavos exatos.
+- Primeira revisão passou PostgreSQL16/Node22 (53 testes e builds) em https://github.com/solucentergestao-pb/Solucenter/actions/runs/37200037544; revisão adicional de precisão de centavos em validação. Atualizar evidência final quando concluída.
+- PR #1 e PR #2 continuam abertos; último CI do PR #2 aprovado em https://github.com/solucentergestao-pb/Solucenter/actions/runs/37142899552.
+- Nenhuma alteração no Render, nenhuma migration em produção e nenhum dado real de cliente modificado.
+
+Pontuação anterior 40/100; atual 40/100; ganho +0 p.p.; restante 60/100. A correção e os testes comprovam o subfluxo de contas a receber; o marco de três pontos da frente financeiro exige também seus demais fluxos (contas a pagar, fluxo de caixa/DRE e testes negativos relevantes). Não creditá-lo parcialmente ou inventar percentual operacional.
+
+Próxima meta: armazenamento privado de fotos e autorização de acesso, seguida por validação das telas do ciclo operacional. Acesso Render ainda não confirmado; nenhuma ferramenta Render conectada estava disponível nesta execução. Preservar a rotina: há trabalho de código independente desse acesso.

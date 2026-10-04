@@ -4,6 +4,10 @@ import {prisma} from '../lib/prisma.js';
 import {AuthUser} from '../lib/auth.js';
 import {fail} from '../lib/errors.js';
 import {receivableAfterPayment} from '../lib/commercial.js';
+import {Prisma} from '@prisma/client';
+
+// Matches Decimal(12,2); reject fractions of a cent instead of rounding silently.
+const amountSchema=z.number().positive().max(9999999999.99).refine(value=>new Prisma.Decimal(value).decimalPlaces()<=2,'Informe um valor com no máximo duas casas decimais.');
 
 export async function financeRoutes(app:FastifyInstance){
  app.addHook('preHandler',async r=>r.jwtVerify());
@@ -13,7 +17,7 @@ export async function financeRoutes(app:FastifyInstance){
  });
  app.post('/receivables',async(req,reply)=>{
   const u=req.user as AuthUser;
-  const p=z.object({customerId:z.string().uuid(),serviceOrderId:z.string().uuid().optional(),quoteId:z.string().uuid().optional(),description:z.string().min(2),amount:z.number().positive(),dueDate:z.coerce.date()}).safeParse(req.body);
+  const p=z.object({customerId:z.string().uuid(),serviceOrderId:z.string().uuid().optional(),quoteId:z.string().uuid().optional(),description:z.string().min(2),amount:amountSchema,dueDate:z.coerce.date()}).safeParse(req.body);
   if(!p.success)return fail(reply,422,'VALIDATION_ERROR','Cobrança inválida.',p.error.flatten());
   try{
    const result=await prisma.$transaction(async tx=>{
@@ -53,7 +57,7 @@ export async function financeRoutes(app:FastifyInstance){
  });
  app.post('/receivables/:id/payments',async(req,reply)=>{
   const u=req.user as AuthUser,{id}=req.params as {id:string};
-  const p=z.object({amount:z.number().positive(),paymentMethod:z.enum(['PIX','CASH','CREDIT_CARD','DEBIT_CARD','TRANSFER','BOLETO','OTHER']),transactionReference:z.string().optional(),notes:z.string().optional(),paymentDate:z.coerce.date().optional()}).safeParse(req.body);
+  const p=z.object({amount:amountSchema,paymentMethod:z.enum(['PIX','CASH','CREDIT_CARD','DEBIT_CARD','TRANSFER','BOLETO','OTHER']),transactionReference:z.string().optional(),notes:z.string().optional(),paymentDate:z.coerce.date().optional()}).safeParse(req.body);
   if(!p.success)return fail(reply,422,'VALIDATION_ERROR','Pagamento inválido.',p.error.flatten());
   if(!z.string().uuid().safeParse(id).success)return fail(reply,404,'RECEIVABLE_NOT_FOUND','Cobrança não encontrada.');
   try{

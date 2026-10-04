@@ -83,6 +83,15 @@ describe.skipIf(!database)('PostgreSQL: operational cycle and tenant isolation',
   expect((await call('POST',`/service-orders/${os.id}/invoice`,{dueDate:'2026-10-15'},technician)).statusCode).toBe(403);
   expect(await db.payment.count({where:{receivableId:r.id}})).toBe(0);
  });
+ it('rejects fractions of a cent and records an exact cent payment',async()=>{
+  const {customer}=await fixture();
+  expect((await call('POST','/finance/receivables',{customerId:customer.id,description:'Invalid cents',amount:0.001,dueDate:'2026-10-15'})).statusCode).toBe(422);
+  const r=await db.accountReceivable.create({data:{companyId,customerId:customer.id,description:'Cent test',originalAmount:0.03,openAmount:0.03,dueDate:new Date()}});
+  expect((await call('POST',`/finance/receivables/${r.id}/payments`,{amount:0.001,paymentMethod:'PIX'})).statusCode).toBe(422);
+  expect((await call('POST',`/finance/receivables/${r.id}/payments`,{amount:0.01,paymentMethod:'PIX'})).statusCode).toBe(200);
+  expect(Number((await db.accountReceivable.findUniqueOrThrow({where:{id:r.id}})).openAmount)).toBe(0.02);
+  expect(Number((await db.payment.findFirstOrThrow({where:{receivableId:r.id}})).amount)).toBe(0.01);
+ });
  afterAll(async()=>{await app?.close();await db?.$disconnect()});
  it('logs in, registers hierarchy/equipment, converts a quote, executes and receives an OS',async()=>{
   const login=await call('POST','/auth/login',{email,password},'');expect(login.statusCode).toBe(200);token=login.json().accessToken;
