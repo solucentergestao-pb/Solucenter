@@ -1,5 +1,5 @@
 import {randomUUID} from 'node:crypto';
-import {mkdir} from 'node:fs/promises';
+import {mkdir,writeFile} from 'node:fs/promises';
 import bcrypt from 'bcryptjs';
 import type {FastifyInstance} from 'fastify';
 import {beforeAll,afterAll,describe,expect,it} from 'vitest';
@@ -93,6 +93,19 @@ describe.skipIf(!database)('PostgreSQL: operational cycle and tenant isolation',
   expect(Number((await db.payment.findFirstOrThrow({where:{receivableId:r.id}})).amount)).toBe(0.01);
  });
  afterAll(async()=>{await app?.close();await db?.$disconnect()});
+ it('serves an OS photo only to the owning company',async()=>{
+  const {os}=await fixture();
+  const name=randomUUID()+'.jpg';
+  await mkdir('uploads/service-orders',{recursive:true});
+  await writeFile('uploads/service-orders/'+name,Buffer.from([0xff,0xd8,0xff,0xd9]));
+  const photo=await db.servicePhoto.create({data:{serviceOrderId:os.id,category:'DURING',fileUrl:'/uploads/service-orders/'+name}});
+  const own=await call('GET',`/uploads/service-orders/${os.id}/photos/${photo.id}/content`);
+  expect(own.statusCode).toBe(200);
+  expect(own.headers['content-type']).toContain('image/jpeg');
+  expect(own.headers['cache-control']).toBe('private, no-store');
+  const foreign=await call('GET',`/uploads/service-orders/${os.id}/photos/${photo.id}/content`,undefined,foreignToken);
+  expect(foreign.statusCode).toBe(404);
+ });
  it('logs in, registers hierarchy/equipment, converts a quote, executes and receives an OS',async()=>{
   const login=await call('POST','/auth/login',{email,password},'');expect(login.statusCode).toBe(200);token=login.json().accessToken;
   const customerResponse=await call('POST','/customers/',{type:'PJ',name:'Test Customer'});expect(customerResponse.statusCode).toBe(201);const customer=customerResponse.json();
