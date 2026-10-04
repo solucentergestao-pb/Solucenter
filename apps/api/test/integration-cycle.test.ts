@@ -14,7 +14,7 @@ if(database){
 describe.skipIf(!database)('PostgreSQL: operational cycle and tenant isolation',()=>{
  let app:FastifyInstance;
  let db:typeof import('../src/lib/prisma.js').prisma;
- let token:string,foreignToken:string;
+ let token:string,foreignToken:string,companyId:string,userId:string,foreignCompanyId:string;
  const email=`test-${randomUUID()}@example.com`,password='Isolated-Test-Only-2026!';
  async function call(method:'GET'|'POST',path:string,payload?:object,access=token){
   return app.inject({method,url:'/api/v1'+path,payload,headers:access?{authorization:`Bearer ${access}`}:{}});
@@ -24,11 +24,65 @@ describe.skipIf(!database)('PostgreSQL: operational cycle and tenant isolation',
   db=(await import('../src/lib/prisma.js')).prisma;
   const company=await db.company.create({data:{tradeName:'Integration Test'}});
   const role=await db.role.create({data:{companyId:company.id,name:'ADMIN'}});
-  await db.user.create({data:{companyId:company.id,roleId:role.id,name:'Test Admin',email,passwordHash:await bcrypt.hash(password,4)}});
+  const user=await db.user.create({data:{companyId:company.id,roleId:role.id,name:'Test Admin',email,passwordHash:await bcrypt.hash(password,4)}});
+  companyId=company.id;userId=user.id;
   app=(await import('../src/server.js')).buildApp();await app.ready();
   const other=await db.company.create({data:{tradeName:'Foreign Test Company'}});
+  foreignCompanyId=other.id;
   foreignToken=app.jwt.sign({id:randomUUID(),companyId:other.id,role:'ADMIN',permissions:[]});
+  token=app.jwt.sign({id:user.id,companyId:company.id,role:'ADMIN',permissions:[]});
  },30000);
+ async function fixture(){
+  const customer=await db.customer.create({data:{companyId,code:randomUUID(),name:'Financial Test',type:'PJ'}});
+  const unit=await db.customerUnit.create({data:{customerId:customer.id,name:'Matriz'}});
+  const os=await db.serviceOrder.create({data:{companyId,customerId:customer.id,unitId:unit.id,createdById:userId,orderNumber:randomUUID(),reportedProblem:'Financial test',status:'COMPLETED',finalValue:100}});
+  return {customer,unit,os};
+ }
+ it('commits only one concurrent full payment',async()=>{
+  const {customer}=await fixture();
+  const r=await db.accountReceivable.create({data:{companyId,customerId:customer.id,description:'Race test',originalAmount:100,openAmount:100,dueDate:new Date()}});
+  const responses=await Promise.all([call('POST',`/finance/receivables/${r.id}/payments`,{amount:100,paymentMethod:'PIX'}),call('POST',`/finance/receivables/${r.id}/payments`,{amount:100,paymentMethod:'PIX'})]);
+  expect(responses.map(x=>x.statusCode).sort()).toEqual([200,409]);
+  expect(await db.payment.count({where:{receivableId:r.id}})).toBe(1);
+  const saved=await db.accountReceivable.findUniqueOrThrow({where:{id:r.id}});
+  expect(Number(saved.openAmount)).toBe(0);expect(saved.status).toBe('PAID');
+ });
+ it('preserves the balance under concurrent partial payments',async()=>{
+  const {customer}=await fixture();
+  const r=await db.accountReceivable.create({data:{companyId,customerId:customer.id,description:'Partial race',originalAmount:100,openAmount:100,dueDate:new Date()}});
+  const responses=await Promise.all([call('POST',`/finance/receivables/${r.id}/payments`,{amount:30,paymentMethod:'PIX'}),call('POST',`/finance/receivables/${r.id}/payments`,{amount:30,paymentMethod:'PIX'})]);
+  expect(responses.every(x=>[200,409].includes(x.statusCode))).toBe(true);
+  const successful=responses.filter(x=>x.statusCode===200).length;expect(successful).toBeGreaterThan(0);
+  const paid=await db.payment.aggregate({where:{receivableId:r.id},_sum:{amount:true}});
+  const saved=await db.accountReceivable.findUniqueOrThrow({where:{id:r.id}});
+  expect(Number(paid._sum.amount)).toBe(successful*30);expect(Number(saved.openAmount)+Number(paid._sum.amount)).toBe(100);
+ });
+ it('creates only one invoice when both invoice endpoints race',async()=>{
+  const {customer,os}=await fixture();
+  const responses=await Promise.all([call('POST',`/service-orders/${os.id}/invoice`,{dueDate:'2026-10-15'}),call('POST','/finance/receivables',{customerId:customer.id,serviceOrderId:os.id,description:'Manual invoice',amount:100,dueDate:'2026-10-15'})]);
+  expect(responses.filter(x=>[200,201].includes(x.statusCode))).toHaveLength(1);
+  expect(responses.filter(x=>x.statusCode===409)).toHaveLength(1);
+  expect(await db.accountReceivable.count({where:{serviceOrderId:os.id}})).toBe(1);
+  expect((await db.serviceOrder.findUniqueOrThrow({where:{id:os.id}})).status).toBe('INVOICED');
+ });
+ it('rejects a foreign customer or another customer’s OS without saving a receivable',async()=>{
+  const {customer,os}=await fixture();
+  const foreign=await db.customer.create({data:{companyId:foreignCompanyId,code:randomUUID(),name:'Foreign',type:'PJ'}});
+  const other=await db.customer.create({data:{companyId,code:randomUUID(),name:'Other Customer',type:'PJ'}});
+  expect((await call('POST','/finance/receivables',{customerId:foreign.id,description:'Invalid',amount:100,dueDate:'2026-10-15'})).statusCode).toBe(404);
+  expect((await call('POST','/finance/receivables',{customerId:other.id,serviceOrderId:os.id,description:'Invalid',amount:100,dueDate:'2026-10-15'})).statusCode).toBe(422);
+  expect(await db.accountReceivable.count({where:{OR:[{customerId:foreign.id},{customerId:other.id},{serviceOrderId:os.id}]}})).toBe(0);
+  expect((await db.serviceOrder.findUniqueOrThrow({where:{id:os.id}})).status).toBe('COMPLETED');
+  expect(customer.companyId).toBe(companyId);
+ });
+ it('blocks foreign payments and technician invoicing',async()=>{
+  const {customer,os}=await fixture();
+  const r=await db.accountReceivable.create({data:{companyId,customerId:customer.id,description:'Permissions',originalAmount:100,openAmount:100,dueDate:new Date()}});
+  expect((await call('POST',`/finance/receivables/${r.id}/payments`,{amount:100,paymentMethod:'PIX'},foreignToken)).statusCode).toBe(404);
+  const technician=app.jwt.sign({id:userId,companyId,role:'TECNICO',permissions:[]});
+  expect((await call('POST',`/service-orders/${os.id}/invoice`,{dueDate:'2026-10-15'},technician)).statusCode).toBe(403);
+  expect(await db.payment.count({where:{receivableId:r.id}})).toBe(0);
+ });
  afterAll(async()=>{await app?.close();await db?.$disconnect()});
  it('logs in, registers hierarchy/equipment, converts a quote, executes and receives an OS',async()=>{
   const login=await call('POST','/auth/login',{email,password},'');expect(login.statusCode).toBe(200);token=login.json().accessToken;
