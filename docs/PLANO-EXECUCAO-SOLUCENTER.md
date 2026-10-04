@@ -77,10 +77,12 @@ Meta do ciclo: eliminar pagamento com saldo sobrescrito, faturamento duplicado e
 - Endpoint de faturamento exige finance.write; técnico sem essa permissão é bloqueado.
 - Valores monetários devem respeitar Decimal(12,2); frações de centavo são rejeitadas.
 - Cenários PostgreSQL novos: pagamentos integrais concorrentes, parciais com conservação de saldo, corrida entre dois endpoints de faturamento, vínculos estrangeiros/inconsistentes, isolamento/permissões e centavos exatos.
-- Primeira revisão passou PostgreSQL16/Node22 (53 testes e builds) em https://github.com/solucentergestao-pb/Solucenter/actions/runs/37200037544; revisão adicional de precisão de centavos em validação. Atualizar evidência final quando concluída.
+- Primeira revisão passou PostgreSQL16/Node22 (53 testes e builds) em https://github.com/solucentergestao-pb/Solucenter/actions/runs/37200037544; revisão com precisão de centavos aprovou os testes PostgreSQL em https://github.com/solucentergestao-pb/Solucenter/actions/runs/37200152116; conferir conclusão final dos builds no encerramento desta execução.
 - PR #1 e PR #2 continuam abertos; último CI do PR #2 aprovado em https://github.com/solucentergestao-pb/Solucenter/actions/runs/37142899552.
 - Nenhuma alteração no Render, nenhuma migration em produção e nenhum dado real de cliente modificado.
 
 Pontuação anterior 40/100; atual 40/100; ganho +0 p.p.; restante 60/100. A correção e os testes comprovam o subfluxo de contas a receber; o marco de três pontos da frente financeiro exige também seus demais fluxos (contas a pagar, fluxo de caixa/DRE e testes negativos relevantes). Não creditá-lo parcialmente ou inventar percentual operacional.
 
 Próxima meta: armazenamento privado de fotos e autorização de acesso, seguida por validação das telas do ciclo operacional. Acesso Render ainda não confirmado; nenhuma ferramenta Render conectada estava disponível nesta execução. Preservar a rotina: há trabalho de código independente desse acesso.
+
+A tela de contas a receber foi ajustada para exibir falhas/sucesso, atualizar o saldo após tentativa de pagamento, bloquear cliques repetidos e ocultar pagamento em cobranças canceladas. Build web local em validação; não equivale a teste de uso da tela em produção.
