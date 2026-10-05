@@ -86,3 +86,18 @@ Pontuação anterior 40/100; atual 40/100; ganho +0 p.p.; restante 60/100. A cor
 Próxima meta: armazenamento privado de fotos e autorização de acesso, seguida por validação das telas do ciclo operacional. Acesso Render ainda não confirmado; nenhuma ferramenta Render conectada estava disponível nesta execução. Preservar a rotina: há trabalho de código independente desse acesso.
 
 A tela de contas a receber foi ajustada para exibir falhas/sucesso, atualizar o saldo após tentativa de pagamento, bloquear cliques repetidos e ocultar pagamento em cobranças canceladas. Build web local com Next.js 16.3.8 e typecheck aprovados; não equivale a teste de uso da tela em produção.
+
+## Execução de 05/10/2026 — fotos privadas e autorização
+Meta do ciclo: retirar caminhos públicos/arbitrários das fotos de equipamento e OS e comprovar isolamento na API.
+- Novos uploads usam chaves internas `private://` e diretório não público com permissões restritas; a resposta apresenta somente endpoint autenticado de download.
+- Leitura de foto exige JWT, empresa proprietária e, no portal, o cliente proprietário. Perfil interno também precisa da permissão de leitura correspondente.
+- Upload exige permissão específica, categoria válida, limite de 8 MB e assinatura binária coerente com JPG, PNG ou WEBP; apenas declarar o MIME não é suficiente.
+- A rota antiga de foto da OS não aceita mais `fileUrl` fornecida pelo cliente, eliminando referência arbitrária a arquivos externos ou de outro atendimento.
+- Falha ao persistir o registro remove o arquivo recém-criado. Em produção sem `PRIVATE_UPLOAD_ROOT`, o endpoint responde indisponibilidade e não grava em disco efêmero por engano.
+- PDF técnico consegue ler internamente as novas chaves privadas sem publicar o arquivo original. Listagens de equipamentos e portal substituem a chave por URL autenticada.
+- Teste PostgreSQL acrescentado: upload real multipart de equipamento e OS, download autorizado, bloqueio de empresa estrangeira, isolamento entre clientes do portal, rejeição sem autenticação, rejeição de conteúdo falso e bloqueio da rota arbitrária.
+- Configuração Render documentada para Persistent Disk privado, mas não aplicada: integração Render e disco persistente continuam sem acesso confirmado. Fotos antigas com caminhos legados ainda exigem migração controlada antes da publicação.
+
+Pontuação anterior 40/100; atual 40/100; ganho +0 p.p.; restante 60/100. O código e o teste isolado não satisfazem os 2 pontos de armazenamento privado porque ainda faltam disco/object storage real, migração dos arquivos legados e validação após deploy.
+
+Próxima meta: validar o workflow PostgreSQL da revisão, migrar fotos legadas de forma segura quando houver ambiente e testar pelas telas o ciclo equipamento → OS → foto → relatório. Não alterar dados de produção sem acesso e cópia de segurança confirmados.

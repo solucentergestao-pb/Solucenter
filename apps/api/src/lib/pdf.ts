@@ -1,8 +1,9 @@
 import PDFDocument from 'pdfkit';
 import fs from 'node:fs'; import path from 'node:path'; import crypto from 'node:crypto';
+import {privateImagePath} from './privateStorage.js';
 export type PdfLine={label:string,value:string};
 export type PdfPhoto={fileUrl:string,caption?:string};
-const localPath=(url?:string|null)=>{if(!url)return null; const clean=url.replace(/^\//,''); const p=path.resolve(clean); return fs.existsSync(p)?p:null};
+const localPath=(url?:string|null)=>{if(!url)return null; const p=url.startsWith('private://')?privateImagePath(url):path.resolve(url.replace(/^\//,'')); return p&&fs.existsSync(p)?p:null};
 export async function createBusinessPdf(opts:{title:string,number:string,company:string,customer:string,logoUrl?:string|null,accent?:string,lines:PdfLine[],sections?:{title:string,body:string}[],photos?:PdfPhoto[],signature?:{name:string,fileUrl:string}|null,footer?:string}){
  const dir=path.resolve('uploads/documents'); fs.mkdirSync(dir,{recursive:true}); const token=crypto.randomBytes(24).toString('hex'); const file=`${token}.pdf`; const full=path.join(dir,file); const blue=opts.accent??'#075EAC';
  await new Promise<void>((resolve,reject)=>{const doc=new PDFDocument({size:'A4',margin:48,bufferPages:true}); const out=fs.createWriteStream(full); doc.pipe(out);

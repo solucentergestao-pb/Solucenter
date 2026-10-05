@@ -1,5 +1,7 @@
 import {randomUUID} from 'node:crypto';
-import {mkdir,writeFile} from 'node:fs/promises';
+import {mkdir,mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import bcrypt from 'bcryptjs';
 import type {FastifyInstance} from 'fastify';
 import {beforeAll,afterAll,describe,expect,it} from 'vitest';
@@ -14,12 +16,13 @@ if(database){
 describe.skipIf(!database)('PostgreSQL: operational cycle and tenant isolation',()=>{
  let app:FastifyInstance;
  let db:typeof import('../src/lib/prisma.js').prisma;
- let token:string,foreignToken:string,companyId:string,userId:string,foreignCompanyId:string;
+ let token:string,foreignToken:string,companyId:string,userId:string,foreignCompanyId:string,privateRoot:string;
  const email=`test-${randomUUID()}@example.com`,password='Isolated-Test-Only-2026!';
  async function call(method:'GET'|'POST',path:string,payload?:object,access=token){
   return app.inject({method,url:'/api/v1'+path,payload,headers:access?{authorization:`Bearer ${access}`}:{}});
  }
  beforeAll(async()=>{
+  privateRoot=await mkdtemp(join(tmpdir(),'solucenter-private-'));process.env.PRIVATE_UPLOAD_ROOT=privateRoot;
   await mkdir('uploads',{recursive:true});
   db=(await import('../src/lib/prisma.js')).prisma;
   const company=await db.company.create({data:{tradeName:'Integration Test'}});
@@ -32,6 +35,12 @@ describe.skipIf(!database)('PostgreSQL: operational cycle and tenant isolation',
   foreignToken=app.jwt.sign({id:randomUUID(),companyId:other.id,role:'ADMIN',permissions:[]});
   token=app.jwt.sign({id:user.id,companyId:company.id,role:'ADMIN',permissions:[]});
  },30000);
+ async function upload(path:string,bytes:Buffer,access=token,mimetype='image/png'){
+  const boundary=`solucenter-${randomUUID()}`;
+  const head=Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="category"\r\n\r\nBEFORE\r\n--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="photo.png"\r\nContent-Type: ${mimetype}\r\n\r\n`);
+  const tail=Buffer.from(`\r\n--${boundary}--\r\n`);
+  return app.inject({method:'POST',url:`/api/v1${path}`,payload:Buffer.concat([head,bytes,tail]),headers:{authorization:`Bearer ${access}`,'content-type':`multipart/form-data; boundary=${boundary}`}});
+ }
  async function fixture(){
   const customer=await db.customer.create({data:{companyId,code:randomUUID(),name:'Financial Test',type:'PJ'}});
   const unit=await db.customerUnit.create({data:{customerId:customer.id,name:'Matriz'}});
@@ -92,20 +101,32 @@ describe.skipIf(!database)('PostgreSQL: operational cycle and tenant isolation',
   expect(Number((await db.accountReceivable.findUniqueOrThrow({where:{id:r.id}})).openAmount)).toBe(0.02);
   expect(Number((await db.payment.findFirstOrThrow({where:{receivableId:r.id}})).amount)).toBe(0.01);
  });
- afterAll(async()=>{await app?.close();await db?.$disconnect()});
- it('serves an OS photo only to the owning company',async()=>{
-  const {os}=await fixture();
-  const name=randomUUID()+'.jpg';
-  await mkdir('uploads/service-orders',{recursive:true});
-  await writeFile('uploads/service-orders/'+name,Buffer.from([0xff,0xd8,0xff,0xd9]));
-  const photo=await db.servicePhoto.create({data:{serviceOrderId:os.id,category:'DURING',fileUrl:'/uploads/service-orders/'+name}});
-  const own=await call('GET',`/uploads/service-orders/${os.id}/photos/${photo.id}/content`);
-  expect(own.statusCode).toBe(200);
-  expect(own.headers['content-type']).toContain('image/jpeg');
-  expect(own.headers['cache-control']).toBe('private, no-store');
-  const foreign=await call('GET',`/uploads/service-orders/${os.id}/photos/${photo.id}/content`,undefined,foreignToken);
-  expect(foreign.statusCode).toBe(404);
+ it('stores photos privately and requires an authorized tenant to read them',async()=>{
+  const {customer,unit,os}=await fixture();
+  const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=','base64');
+  const equipment=await db.equipment.create({data:{companyId,customerId:customer.id,unitId:unit.id,assetCode:randomUUID(),equipmentType:'SPLIT'}});
+  const equipmentSaved=await upload(`/uploads/equipment/${equipment.id}/photo`,png);
+  expect(equipmentSaved.statusCode).toBe(201);expect(equipmentSaved.json().fileUrl).toBeUndefined();
+  expect((await call('GET',equipmentSaved.json().downloadUrl.replace('/api/v1',''))).statusCode).toBe(200);
+  expect((await call('GET',equipmentSaved.json().downloadUrl.replace('/api/v1',''),undefined,foreignToken)).statusCode).toBe(404);
+  const saved=await upload(`/uploads/service-orders/${os.id}/photo`,png);
+  expect(saved.statusCode).toBe(201);expect(saved.json().fileUrl).toBeUndefined();
+  expect(saved.json().downloadUrl).toMatch(/^\/api\/v1\/uploads\/service-order-photos\//);
+  const photo=await db.servicePhoto.findUniqueOrThrow({where:{id:saved.json().id}});
+  expect(photo.fileUrl).toMatch(new RegExp(`^private://${companyId}/service-orders/`));
+  const own=await call('GET',`/uploads/service-order-photos/${photo.id}`);expect(own.statusCode).toBe(200);expect(own.headers['content-type']).toContain('image/png');
+  expect((await call('GET',`/uploads/service-order-photos/${photo.id}`,undefined,foreignToken)).statusCode).toBe(404);
+  const portalToken=app.jwt.sign({portalUserId:randomUUID(),companyId,customerId:customer.id,kind:'customer'});
+  expect((await call('GET',`/uploads/service-order-photos/${photo.id}`,undefined,portalToken)).statusCode).toBe(200);
+  const otherCustomer=await db.customer.create({data:{companyId,code:randomUUID(),name:'Other Portal Customer',type:'PJ'}});
+  const otherPortalToken=app.jwt.sign({portalUserId:randomUUID(),companyId,customerId:otherCustomer.id,kind:'customer'});
+  expect((await call('GET',`/uploads/service-order-photos/${photo.id}`,undefined,otherPortalToken)).statusCode).toBe(404);
+  expect((await app.inject({method:'GET',url:`/api/v1/uploads/service-order-photos/${photo.id}`})).statusCode).toBe(401);
+  expect((await upload(`/uploads/service-orders/${os.id}/photo`,Buffer.from('not an image'))).statusCode).toBe(422);
+  expect((await call('POST',`/service-orders/${os.id}/photos`,{category:'BEFORE',fileUrl:'https://attacker.invalid/photo.jpg'})).statusCode).toBe(404);
+  expect(await db.servicePhoto.count({where:{serviceOrderId:os.id}})).toBe(1);
  });
+ afterAll(async()=>{await app?.close();await db?.$disconnect();if(privateRoot)await rm(privateRoot,{recursive:true,force:true})});
  it('logs in, registers hierarchy/equipment, converts a quote, executes and receives an OS',async()=>{
   const login=await call('POST','/auth/login',{email,password},'');expect(login.statusCode).toBe(200);token=login.json().accessToken;
   const customerResponse=await call('POST','/customers/',{type:'PJ',name:'Test Customer'});expect(customerResponse.statusCode).toBe(201);const customer=customerResponse.json();

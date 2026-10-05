@@ -23,11 +23,18 @@ localizam o schema sem argumentos adicionais.
 - `DATABASE_URL`: URL interna do PostgreSQL no Render.
 - `JWT_SECRET`: segredo forte, com pelo menos 48 caracteres.
 - `NODE_ENV`: `production`.
+- `PRIVATE_UPLOAD_ROOT`: caminho absoluto de um disco persistente e não público
+  (por exemplo, `/var/data/solucenter-private`).
 
 Não registre os valores dessas variáveis no GitHub ou em documentos.
+O diretório de fotos não pode estar dentro de uma pasta servida estaticamente.
+Antes de habilitar uploads, monte um Persistent Disk no mesmo caminho de
+`PRIVATE_UPLOAD_ROOT`; sem esse disco, os arquivos se perdem a cada deploy.
 
 ## Verificação após o deploy
 
 1. Confirmar que `prisma migrate deploy` aplicou as migrations.
 2. Confirmar que a API iniciou usando a porta fornecida por `PORT`.
 3. Abrir `/health` e verificar a resposta com `status: "ok"`.
+4. Enviar uma foto de teste, confirmar leitura autenticada e confirmar resposta
+   404 com usuário de outra empresa/cliente.
