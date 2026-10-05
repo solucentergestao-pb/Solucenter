@@ -96,8 +96,9 @@ Meta do ciclo: retirar caminhos públicos/arbitrários das fotos de equipamento 
 - Falha ao persistir o registro remove o arquivo recém-criado. Em produção sem `PRIVATE_UPLOAD_ROOT`, o endpoint responde indisponibilidade e não grava em disco efêmero por engano.
 - PDF técnico consegue ler internamente as novas chaves privadas sem publicar o arquivo original. Listagens de equipamentos e portal substituem a chave por URL autenticada.
 - Teste PostgreSQL acrescentado: upload real multipart de equipamento e OS, download autorizado, bloqueio de empresa estrangeira, isolamento entre clientes do portal, rejeição sem autenticação, rejeição de conteúdo falso e bloqueio da rota arbitrária.
+- Revisão integrada sobre a PR #7 aprovada no PostgreSQL 16/Node 22: migrations, 54 testes, typecheck e builds API/web em https://github.com/solucentergestao-pb/Solucenter/actions/runs/37304143340.
 - Configuração Render documentada para Persistent Disk privado, mas não aplicada: integração Render e disco persistente continuam sem acesso confirmado. Fotos antigas com caminhos legados ainda exigem migração controlada antes da publicação.
 
 Pontuação anterior 40/100; atual 40/100; ganho +0 p.p.; restante 60/100. O código e o teste isolado não satisfazem os 2 pontos de armazenamento privado porque ainda faltam disco/object storage real, migração dos arquivos legados e validação após deploy.
 
-Próxima meta: validar o workflow PostgreSQL da revisão, migrar fotos legadas de forma segura quando houver ambiente e testar pelas telas o ciclo equipamento → OS → foto → relatório. Não alterar dados de produção sem acesso e cópia de segurança confirmados.
+Próxima meta: migrar fotos legadas de forma segura quando houver ambiente e testar pelas telas o ciclo equipamento → OS → foto → relatório. Não alterar dados de produção sem acesso e cópia de segurança confirmados.
