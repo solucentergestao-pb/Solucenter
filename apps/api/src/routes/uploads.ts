@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { createReadStream, createWriteStream } from 'node:fs';
-import { mkdir } from 'node:fs/promises';
+import { access, mkdir } from 'node:fs/promises';
 import { pipeline } from 'node:stream/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -12,6 +12,7 @@ import { fail } from '../lib/errors.js';
 const allowed=new Set(['image/jpeg','image/png','image/webp']);
 const categories=new Set(['BEFORE','DURING','AFTER','NAMEPLATE','DEFECT','INSTALLATION','OTHER']);
 const servicePhotoPrefix='/uploads/service-orders/';
+const uploadsRoot=path.resolve(process.env.UPLOADS_ROOT??'uploads');
 function mimeFromName(name:string){return name.endsWith('.png')?'image/png':name.endsWith('.webp')?'image/webp':'image/jpeg';}
 function storedServicePhotoName(fileUrl:string){
  if(!fileUrl.startsWith(servicePhotoPrefix))return null;
@@ -30,7 +31,7 @@ export async function uploadRoutes(app:FastifyInstance){
   if(!part||!allowed.has(part.mimetype))return fail(reply,422,'INVALID_FILE','Envie JPG, PNG ou WEBP de até 8 MB.');
   const ext=part.mimetype==='image/png'?'.png':part.mimetype==='image/webp'?'.webp':'.jpg';
   const name=crypto.randomUUID()+ext;
-  const dir=path.resolve('uploads/equipment');
+  const dir=path.join(uploadsRoot,'equipment');
   await mkdir(dir,{recursive:true});
   await pipeline(part.file,createWriteStream(path.join(dir,name)));
   const rawCategory=String((part.fields.category as any)?.value??'OTHER');
@@ -49,7 +50,7 @@ export async function uploadRoutes(app:FastifyInstance){
   if(!part||!allowed.has(part.mimetype))return fail(reply,422,'INVALID_FILE','Envie JPG, PNG ou WEBP de até 8 MB.');
   const ext=part.mimetype==='image/png'?'.png':part.mimetype==='image/webp'?'.webp':'.jpg';
   const name=crypto.randomUUID()+ext;
-  const dir=path.resolve('uploads/service-orders');
+  const dir=path.join(uploadsRoot,'service-orders');
   await mkdir(dir,{recursive:true});
   await pipeline(part.file,createWriteStream(path.join(dir,name)));
   const rawCategory=String((part.fields.category as any)?.value??'OTHER');
@@ -66,6 +67,8 @@ export async function uploadRoutes(app:FastifyInstance){
   if(!photo)return fail(reply,404,'PHOTO_NOT_FOUND','Foto não encontrada.');
   const name=storedServicePhotoName(photo.fileUrl);
   if(!name)return fail(reply,409,'PHOTO_STORAGE_UNAVAILABLE','Esta foto ainda não está disponível no armazenamento privado.');
+  const filePath=path.join(uploadsRoot,'service-orders',name);
+  try{await access(filePath)}catch{return fail(reply,404,'PHOTO_FILE_NOT_FOUND','Arquivo da foto não encontrado.');}
   reply.header('Content-Type',mimeFromName(name));
   reply.header('Cache-Control','private, no-store');
   reply.header('Content-Disposition','inline');
