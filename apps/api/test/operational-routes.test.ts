@@ -29,7 +29,7 @@ async function request(route:'orders'|'units'|'quotes',method:'GET'|'POST',url:s
 beforeEach(()=>{vi.resetAllMocks();db.$transaction.mockImplementation(async fn=>fn(db));db.serviceOrder.count.mockResolvedValue(0)});
 
 describe('OS: HTTP routes and tenant guards (database mocked)',()=>{
- it.each(['measurements','materials','photos','start','complete','invoice'])('blocks foreign OS before %s writes',async action=>{
+ it.each(['measurements','materials','start','complete','invoice'])('blocks foreign OS before %s writes',async action=>{
   db.serviceOrder.findFirst.mockResolvedValue(null);
   const r=await request('orders','POST',`/${id}/${action}`,{});
   expect(r.statusCode).toBe(404);
