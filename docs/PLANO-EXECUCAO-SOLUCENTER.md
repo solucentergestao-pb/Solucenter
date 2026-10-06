@@ -102,3 +102,19 @@ Meta do ciclo: retirar caminhos públicos/arbitrários das fotos de equipamento 
 Pontuação anterior 40/100; atual 40/100; ganho +0 p.p.; restante 60/100. O código e o teste isolado não satisfazem os 2 pontos de armazenamento privado porque ainda faltam disco/object storage real, migração dos arquivos legados e validação após deploy.
 
 Próxima meta: migrar fotos legadas de forma segura quando houver ambiente e testar pelas telas o ciclo equipamento → OS → foto → relatório. Não alterar dados de produção sem acesso e cópia de segurança confirmados.
+
+## Execução de 06/10/2026 — PDFs privados e dashboard isolado
+Meta do ciclo: fechar o fluxo real de documentos/dashboard com casos negativos e retirar a exposição direta dos PDFs.
+- PDFs de orçamento e relatório técnico agora são gravados no armazenamento privado; API e tela não recebem o caminho físico.
+- Link público usa token aleatório de 48 caracteres hexadecimais, expira por padrão em 7 dias e entrega o PDF somente após validar token, prazo e arquivo. A validade pode ser configurada entre 1 e 90 dias.
+- Geração exige `document.write`; consulta autenticada exige `document.read`. Empresa estrangeira e técnico sem permissão são bloqueados.
+- Falha ao registrar o documento remove o PDF recém-criado para evitar arquivo órfão.
+- Tela de documentos substituiu a digitação de UUID pela seleção de orçamento ou OS cadastrados e informa a expiração do link.
+- Dashboard exige `dashboard.read`. Teste isolado cria uma segunda empresa e comprova receita, custos, lucro, série mensal e bloqueio do perfil sem permissão.
+- PostgreSQL 16/Node 22 aprovou migrations, 56 testes, typecheck e builds API/web. Evidência: https://github.com/solucentergestao-pb/Solucenter/actions/runs/37457067231.
+- Os testes geram e leem PDFs reais (`%PDF`), validam orçamento e relatório de OS, token adulterado, link expirado, tenant estrangeiro e dashboard com totais exatos.
+- Não houve deploy no Render, uso de banco de produção ou alteração de registros reais.
+
+Pontuação anterior 40/100; atual 43/100; ganho +3 p.p.; restante 57/100. Os 3 pontos correspondem ao fluxo real e aos casos negativos de integração da frente documentos/dashboard. Os 2 pontos de publicação dessa frente continuam pendentes; build ou número de testes não foram contados novamente.
+
+Próxima meta: fechar contas a pagar/fluxo de caixa/DRE com integração PostgreSQL e casos negativos, completando a parte financeira ainda pendente. Em seguida, avançar agenda/preventivas/notificações/portal. A migração de fotos antigas e o smoke test de produção continuam dependentes de acesso ao ambiente persistente.
