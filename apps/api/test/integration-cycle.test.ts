@@ -126,6 +126,41 @@ describe.skipIf(!database)('PostgreSQL: operational cycle and tenant isolation',
   expect((await call('POST',`/service-orders/${os.id}/photos`,{category:'BEFORE',fileUrl:'https://attacker.invalid/photo.jpg'})).statusCode).toBe(404);
   expect(await db.servicePhoto.count({where:{serviceOrderId:os.id}})).toBe(1);
  });
+ it('generates private PDFs with expiring public links and tenant guards',async()=>{
+  const {customer,unit,os}=await fixture();
+  const quote=await db.quote.create({data:{companyId,customerId:customer.id,unitId:unit.id,createdById:userId,quoteNumber:randomUUID(),subtotal:500,total:500,estimatedCost:100,estimatedProfit:400,items:{create:{itemType:'SERVICE',description:'Manutenção completa',quantity:1,unitPrice:500,unitCost:100}}}});
+  const generated=await call('POST',`/documents/quotes/${quote.id}/pdf`);
+  expect(generated.statusCode).toBe(200);expect(generated.json().document.fileUrl).toBeUndefined();expect(generated.json().document.expiresAt).toBeTruthy();
+  const quoteDocument=await db.generatedDocument.findUniqueOrThrow({where:{id:generated.json().document.id}});
+  expect(quoteDocument.fileUrl).toMatch(new RegExp(`^private://${companyId}/documents/`));
+  const publicPdf=await app.inject({method:'GET',url:new URL(generated.json().shareUrl).pathname});
+  expect(publicPdf.statusCode).toBe(200);expect(publicPdf.headers['content-type']).toContain('application/pdf');expect(publicPdf.rawPayload.subarray(0,4).toString()).toBe('%PDF');
+  expect((await call('POST',`/documents/quotes/${quote.id}/pdf`,undefined,foreignToken)).statusCode).toBe(404);
+  const technician=app.jwt.sign({id:userId,companyId,role:'TECNICO',permissions:[]});
+  expect((await call('POST',`/documents/quotes/${quote.id}/pdf`,undefined,technician)).statusCode).toBe(403);
+  const report=await call('POST',`/documents/service-orders/${os.id}/pdf`);expect(report.statusCode).toBe(200);
+  expect((await app.inject({method:'GET',url:new URL(report.json().shareUrl).pathname})).statusCode).toBe(200);
+  await db.generatedDocument.update({where:{id:quoteDocument.id},data:{expiresAt:new Date(Date.now()-1000)}});
+  expect((await app.inject({method:'GET',url:new URL(generated.json().shareUrl).pathname})).statusCode).toBe(404);
+  expect((await app.inject({method:'GET',url:'/public/documents/not-a-token'})).statusCode).toBe(404);
+ });
+ it('isolates dashboard totals and blocks roles without dashboard permission',async()=>{
+  const company=await db.company.create({data:{tradeName:'Dashboard Isolated'}});
+  const role=await db.role.create({data:{companyId:company.id,name:'ADMIN'}});
+  const user=await db.user.create({data:{companyId:company.id,roleId:role.id,name:'Dashboard Admin',email:`dash-${randomUUID()}@example.com`,passwordHash:'unused'}});
+  const customer=await db.customer.create({data:{companyId:company.id,code:randomUUID(),name:'Dashboard Customer',type:'PJ'}});
+  const unit=await db.customerUnit.create({data:{customerId:customer.id,name:'Matriz'}});
+  const os=await db.serviceOrder.create({data:{companyId:company.id,customerId:customer.id,unitId:unit.id,createdById:user.id,orderNumber:randomUUID(),reportedProblem:'Dashboard',status:'COMPLETED',completedAt:new Date(),finalValue:250,laborCost:100}});
+  const receivable=await db.accountReceivable.create({data:{companyId:company.id,customerId:customer.id,serviceOrderId:os.id,description:'Dashboard',originalAmount:250,openAmount:0,dueDate:new Date(),status:'PAID'}});
+  await db.payment.create({data:{receivableId:receivable.id,amount:250,paymentMethod:'PIX'}});
+  const dashboardToken=app.jwt.sign({id:user.id,companyId:company.id,role:'ADMIN',permissions:[]});
+  const dashboard=await call('GET','/dashboard',undefined,dashboardToken);expect(dashboard.statusCode).toBe(200);
+  expect(dashboard.json()).toMatchObject({revenue:250,costs:100,profit:150,completedOrders:1});
+  const monthly=await call('GET','/dashboard/monthly?months=3',undefined,dashboardToken);expect(monthly.statusCode).toBe(200);
+  expect(monthly.json().months.at(-1)).toMatchObject({actualRevenue:250,actualCost:100,actualProfit:150});
+  const technician=app.jwt.sign({id:user.id,companyId:company.id,role:'TECNICO',permissions:[]});
+  expect((await call('GET','/dashboard',undefined,technician)).statusCode).toBe(403);
+ });
  afterAll(async()=>{await app?.close();await db?.$disconnect();if(privateRoot)await rm(privateRoot,{recursive:true,force:true})});
  it('logs in, registers hierarchy/equipment, converts a quote, executes and receives an OS',async()=>{
   const login=await call('POST','/auth/login',{email,password},'');expect(login.statusCode).toBe(200);token=login.json().accessToken;
