@@ -161,6 +161,40 @@ describe.skipIf(!database)('PostgreSQL: operational cycle and tenant isolation',
   const technician=app.jwt.sign({id:user.id,companyId:company.id,role:'TECNICO',permissions:[]});
   expect((await call('GET','/dashboard',undefined,technician)).statusCode).toBe(403);
  });
+ it('guards expense relations, cents, payable races and scoped cash reports',async()=>{
+  const company=await db.company.create({data:{tradeName:'Isolated cash test'}});
+  const access=app.jwt.sign({id:userId,companyId:company.id,role:'ADMIN',permissions:[]});
+  const category=await db.expenseCategory.create({data:{companyId:company.id,name:'Office',dreGroup:'ADMIN'}});
+  const foreignCategory=await db.expenseCategory.create({data:{companyId:foreignCompanyId,name:randomUUID(),dreGroup:'ADMIN'}});
+  const inactive=await db.expenseCategory.create({data:{companyId:company.id,name:'Inactive',dreGroup:'ADMIN',active:false}});
+  const {os}=await fixture();
+  const expense={categoryId:category.id,description:'Office cost',amount:20.25,competenceDate:'2026-10-07'};
+  for(const categoryId of [foreignCategory.id,inactive.id,randomUUID()])expect((await call('POST','/management-finance/expenses',{...expense,categoryId},access)).statusCode).toBe(422);
+  expect((await call('POST','/management-finance/expenses',{...expense,serviceOrderId:os.id},access)).statusCode).toBe(422);
+  expect((await call('POST','/management-finance/expenses',{...expense,amount:1.001},access)).statusCode).toBe(422);
+  expect(await db.expense.count({where:{companyId:company.id}})).toBe(0);
+  expect((await call('POST','/management-finance/expenses',expense,access)).statusCode).toBe(201);
+  expect((await call('POST','/management-finance/expenses',{...expense,status:'OPEN',amount:99},access)).statusCode).toBe(201);
+  const payable={description:'Supplier',amount:30.75,dueDate:'2026-10-07'};
+  expect((await call('POST','/management-finance/payables',{...payable,amount:1.001},access)).statusCode).toBe(422);
+  const created=await call('POST','/management-finance/payables',payable,access);expect(created.statusCode).toBe(201);const id=created.json().id;
+  expect((await call('POST',`/management-finance/payables/${id}/pay`,{paymentMethod:'PIX'},foreignToken)).statusCode).toBe(409);
+  expect((await db.accountPayable.findUniqueOrThrow({where:{id}})).status).toBe('OPEN');
+  const payments=await Promise.all([call('POST',`/management-finance/payables/${id}/pay`,{paymentMethod:'PIX',paidDate:'2026-10-07'},access),call('POST',`/management-finance/payables/${id}/pay`,{paymentMethod:'CASH',paidDate:'2026-10-08'},access)]);
+  expect(payments.map(r=>r.statusCode).sort()).toEqual([200,409]);
+  await db.accountPayable.create({data:{companyId:foreignCompanyId,...payable,dueDate:new Date(payable.dueDate),status:'PAID',paidDate:new Date('2026-10-07')}});
+  const period='?from=2026-01-01&to=2027-01-01';
+  const cash=await call('GET','/management-finance/cash-flow'+period,undefined,access);expect(cash.statusCode).toBe(200);
+  expect(cash.json().inflows).toEqual([]);expect(cash.json().outflows).toHaveLength(2);
+  expect(cash.json().outflows.map((x:any)=>x.amount).sort((a:number,b:number)=>a-b)).toEqual([20.25,30.75]);
+  const dre=await call('GET','/management-finance/dre'+period,undefined,access);expect(dre.statusCode).toBe(200);expect(dre.json()).toMatchObject({revenue:0,operatingExpenses:20.25,operatingResult:-20.25});
+  for(const route of ['cash-flow','dre']){
+   expect((await call('GET',`/management-finance/${route}?from=invalid&to=2026-10-07`,undefined,access)).statusCode).toBe(422);
+   expect((await call('GET',`/management-finance/${route}?from=2026-10-08&to=2026-10-07`,undefined,access)).statusCode).toBe(422);
+   const technician=app.jwt.sign({id:userId,companyId:company.id,role:'TECNICO',permissions:[]});
+   expect((await call('GET',`/management-finance/${route}`+period,undefined,technician)).statusCode).toBe(403);
+  }
+ });
  afterAll(async()=>{await app?.close();await db?.$disconnect();if(privateRoot)await rm(privateRoot,{recursive:true,force:true})});
  it('logs in, registers hierarchy/equipment, converts a quote, executes and receives an OS',async()=>{
   const login=await call('POST','/auth/login',{email,password},'');expect(login.statusCode).toBe(200);token=login.json().accessToken;

@@ -118,3 +118,12 @@ Meta do ciclo: fechar o fluxo real de documentos/dashboard com casos negativos e
 Pontuação anterior 40/100; atual 43/100; ganho +3 p.p.; restante 57/100. Os 3 pontos correspondem ao fluxo real e aos casos negativos de integração da frente documentos/dashboard. Os 2 pontos de publicação dessa frente continuam pendentes; build ou número de testes não foram contados novamente.
 
 Próxima meta: fechar contas a pagar/fluxo de caixa/DRE com integração PostgreSQL e casos negativos, completando a parte financeira ainda pendente. Em seguida, avançar agenda/preventivas/notificações/portal. A migração de fotos antigas e o smoke test de produção continuam dependentes de acesso ao ambiente persistente.
+
+## 07/10/2026 — Integridade de despesas e contas a pagar
+- Base preservada: PR #9, commit 2dff1d713ae9a8e9336f5669444a0f1a1471e94b; entrega em branch fix/management-finance-integrity, sem integração/publicação.
+- Despesas rejeitam categoria estrangeira, inexistente ou inativa e OS de outra empresa; valores de despesas/contas a pagar limitados a duas casas decimais e ao tamanho da coluna.
+- Fluxo de caixa inclui contas a pagar quitadas; despesas abertas não entram. Caixa/DRE devolvem 422 para datas inválidas ou período invertido.
+- Novo teste real PostgreSQL cobre vínculos, centavos, corrida de quitação, isolamento do caixa/DRE, exclusão de despesas abertas e permissões. Typecheck API e 46 testes locais aprovados; 11 testes de integração exigem banco isolado e são verificados no CI da PR.
+- Pontuação anterior/atual: 43/100 → 43/100, +0 p.p.; faltam 57 pontos. Este bloco melhora integridade, mas não comprova sozinho toda a frente financeira; sem crédito de produção.
+- Meta do ciclo: eliminar falhas de vínculos/caixa e provar regressões no banco isolado; referência de até 10 p.p., sem ganho artificial.
+- Pendências: financeiro planejado/realizado completo e telas; Render/banco homologação/storage ainda sem acesso confirmado. Próxima meta: validar esses fluxos e preparar publicação quando houver acesso.
