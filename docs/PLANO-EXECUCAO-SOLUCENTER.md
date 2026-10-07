@@ -1,7 +1,7 @@
 # SOLUCENTER — Plano e acompanhamento de conclusão
 Data-base: 03/10/2026, America/Fortaleza.
 Repositório: solucentergestao-pb/Solucenter.
-Entrega atual: https://github.com/solucentergestao-pb/Solucenter/pull/3 (branch fix/financial-integrity, baseada no PR #2; ainda não integrada nem publicada).
+Entrega atual: https://github.com/solucentergestao-pb/Solucenter/pull/10 (branch fix/management-finance-integrity, baseada no PR #9; ainda não integrada nem publicada).
 
 ## O que o percentual significa
 Índice de cumprimento de marcos de entrega da V1, com pesos definidos hoje. Não é estimativa de horas, quantidade de código correta nem porcentagem de funcionalidades operacionais. A existência de código recebe crédito apenas no marco de estrutura disponível; não implica funcionamento. Não há percentual global histórico anterior confiável para comparação. A linha de base é conservadora e provisória: 40/100 pontos reconhecidos e 60/100 ainda não comprovados. Pode ser revisada para baixo se a auditoria invalidar marcos. Não converter ausência de evidência em confirmação de falha.
@@ -123,7 +123,7 @@ Próxima meta: fechar contas a pagar/fluxo de caixa/DRE com integração Postgre
 - Base preservada: PR #9, commit 2dff1d713ae9a8e9336f5669444a0f1a1471e94b; entrega em branch fix/management-finance-integrity, sem integração/publicação.
 - Despesas rejeitam categoria estrangeira, inexistente ou inativa e OS de outra empresa; valores de despesas/contas a pagar limitados a duas casas decimais e ao tamanho da coluna.
 - Fluxo de caixa inclui contas a pagar quitadas; despesas abertas não entram. Caixa/DRE devolvem 422 para datas inválidas ou período invertido.
-- Novo teste real PostgreSQL cobre vínculos, centavos, corrida de quitação, isolamento do caixa/DRE, exclusão de despesas abertas e permissões. Typecheck API e 46 testes locais aprovados; 11 testes de integração exigem banco isolado e são verificados no CI da PR.
+- Novo teste real PostgreSQL cobre vínculos, centavos, corrida de quitação, isolamento do caixa/DRE, exclusão de despesas abertas e permissões. Typecheck API e 46 testes locais aprovados; CI PostgreSQL16/Node22 aprovado em https://github.com/solucentergestao-pb/Solucenter/actions/runs/37616734245 (commit 8046f17bed68136574e7d026f3a0b278724a2884): migrations, typecheck API/web, 57 testes incluindo 11 de integração real e builds API/web.
 - Pontuação anterior/atual: 43/100 → 43/100, +0 p.p.; faltam 57 pontos. Este bloco melhora integridade, mas não comprova sozinho toda a frente financeira; sem crédito de produção.
 - Meta do ciclo: eliminar falhas de vínculos/caixa e provar regressões no banco isolado; referência de até 10 p.p., sem ganho artificial.
-- Pendências: financeiro planejado/realizado completo e telas; Render/banco homologação/storage ainda sem acesso confirmado. Próxima meta: validar esses fluxos e preparar publicação quando houver acesso.
+- Pendências: financeiro planejado/realizado completo e telas; Render/banco homologação/storage ainda sem acesso confirmado. Próxima meta: conectar a tela DRE (hoje mostra valores vazios) à API, validar planejado/realizado e preparar publicação quando houver acesso.
