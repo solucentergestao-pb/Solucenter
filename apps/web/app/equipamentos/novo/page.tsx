@@ -123,10 +123,30 @@ export default function NovoEquip() {
     }
   }
 
-  async function qr() {
-    const b = await api("/equipment/" + created.id + "/qr");
+  async function downloadFile(path: string, filename: string) {
+    const b = await api(path);
     const url = URL.createObjectURL(b as Blob);
-    window.open(url, "_blank");
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async function downloadQr() {
+    await downloadFile(
+      "/equipment/" + created.id + "/qr",
+      created.assetCode + "-qr.png"
+    );
+  }
+
+  async function downloadLabelPdf() {
+    await downloadFile(
+      "/equipment/" + created.id + "/label.pdf",
+      created.assetCode + "-etiqueta.pdf"
+    );
   }
 
   async function photo(file: File) {
@@ -288,8 +308,12 @@ export default function NovoEquip() {
         <section className="card">
           <h2>{created.assetCode}</h2>
           <p>Equipamento cadastrado.</p>
-          <button type="button" onClick={qr}>
-            Abrir QR Code
+          <p>O QR Code exclusivo deste equipamento já foi criado.</p>
+          <button type="button" onClick={downloadLabelPdf}>
+            Baixar etiqueta em PDF
+          </button>
+          <button type="button" onClick={downloadQr}>
+            Baixar QR Code em PNG
           </button>
           <p>
             <input
