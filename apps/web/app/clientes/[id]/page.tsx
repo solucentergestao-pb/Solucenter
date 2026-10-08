@@ -175,9 +175,13 @@ export default function Cliente() {
           <p>{[x.street, x.number, x.city, x.state].filter(Boolean).join(", ")}</p>
 
           {x.environments.map((a: any) => (
-            <span className="pill" key={a.id}>
+            <a
+              className="pill"
+              key={a.id}
+              href={`/equipamentos/novo?customerId=${encodeURIComponent(id)}&unitId=${encodeURIComponent(x.id)}&environmentId=${encodeURIComponent(a.id)}`}
+            >
               {a.name}
-            </span>
+            </a>
           ))}
         </div>
       ))}
