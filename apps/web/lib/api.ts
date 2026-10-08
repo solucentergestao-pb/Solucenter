@@ -22,7 +22,7 @@ export async function api(path:string,options:RequestInit={}){
  }
  const ct=response.headers.get('content-type')??'';
  const body=ct.includes('json')?await response.json().catch(()=>null):await response.blob();
- if(response.status===401&&typeof window!=='undefined'&&!path.startsWith('/auth/login')){localStorage.removeItem('token');window.location.href='/login';throw new Error('Sessão expirada.');}
+ if(response.status===401&&typeof window!=='undefined'&&!path.startsWith('/auth/login')){localStorage.removeItem('token');window.location.href='/login?next='+encodeURIComponent(window.location.pathname+window.location.search);throw new Error('Sessão expirada.');}
  if(!response.ok)throw new Error((body as any)?.error?.message??'Erro na API');
  return body;
 }
