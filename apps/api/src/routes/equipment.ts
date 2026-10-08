@@ -58,8 +58,8 @@ async function makeLabelPdf(equipment: {
 
   return await new Promise<Buffer>((resolve, reject) => {
     const doc = new PDFDocument({
-      size: [283.46, 170.08], // 100 x 60 mm
-      margins: { top: 12, left: 12, right: 12, bottom: 12 },
+      size: [170.08, 113.39], // 60 x 40 mm
+      margins: { top: 6, left: 6, right: 6, bottom: 6 },
     });
     const chunks: Buffer[] = [];
 
@@ -67,27 +67,27 @@ async function makeLabelPdf(equipment: {
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    doc.fontSize(15).text('SOLUCENTER', 126, 16, { width: 145 });
-    doc.fontSize(7).fillColor('#4b5563').text('Climatização & Elétrica', 126, 34, { width: 145 });
-    doc.fillColor('#111827').fontSize(11).text(equipment.assetCode, 126, 58, { width: 145 });
-    doc.fontSize(8).text(
+    doc.image(qr, 8, 10, { fit: [72, 72] });
+    doc.fontSize(10).fillColor('#111827').text('SOLUCENTER', 86, 10, { width: 76 });
+    doc.fontSize(5.5).fillColor('#4b5563').text('Climatização & Elétrica', 86, 24, { width: 76 });
+    doc.fillColor('#111827').fontSize(8.5).text(equipment.assetCode, 86, 40, { width: 76 });
+    doc.fontSize(6.5).text(
       `${equipment.equipmentType}${equipment.capacityBtu ? ` · ${equipment.capacityBtu} BTU/h` : ''}`,
-      126,
-      78,
-      { width: 145 }
+      86,
+      55,
+      { width: 76 }
     );
-    doc.image(qr, 14, 18, { fit: [100, 100] });
-    doc.fontSize(7).fillColor('#374151').text(
-      'Escaneie para abrir a ficha deste equipamento.',
-      126,
-      104,
-      { width: 145, lineGap: 2 }
+    doc.fontSize(5.5).fillColor('#374151').text(
+      'Escaneie para abrir a ficha do equipamento.',
+      86,
+      71,
+      { width: 76, lineGap: 1 }
     );
-    doc.fontSize(6.5).fillColor('#6b7280').text(
-      'Etiqueta 100 x 60 mm · QR exclusivo do equipamento',
-      14,
-      146,
-      { width: 255, align: 'center' }
+    doc.fontSize(5).fillColor('#6b7280').text(
+      'Etiqueta 60 x 40 mm · QR exclusivo',
+      8,
+      99,
+      { width: 154, align: 'center' }
     );
 
     doc.end();
