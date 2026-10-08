@@ -14,8 +14,13 @@ export function isStaffPrincipal(value: unknown): value is AuthUser {
 
 export async function internalAccess(req: FastifyRequest, reply: FastifyReply) {
   const route = req.routeOptions.url ?? '';
+  const authorizedPhotoRead=req.method==='GET'&&(
+    route==='/api/v1/uploads/equipment-photos/:id'
+    ||route==='/api/v1/uploads/service-order-photos/:id'
+  );
   if (req.method === 'OPTIONS' || !route.startsWith('/api/v1/')
-    || route.startsWith('/api/v1/portal/') || route === '/api/v1/auth/login') return;
+    || route.startsWith('/api/v1/portal/') || route === '/api/v1/auth/login'
+    || authorizedPhotoRead) return;
   try { await req.jwtVerify(); } catch {
     return reply.code(401).send({error:{code:'UNAUTHORIZED',message:'Autenticação necessária.'}});
   }
