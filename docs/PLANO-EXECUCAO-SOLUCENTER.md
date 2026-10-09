@@ -1,7 +1,7 @@
 # SOLUCENTER — Plano e acompanhamento de conclusão
 Data-base: 03/10/2026, America/Fortaleza.
 Repositório: solucentergestao-pb/Solucenter.
-Entrega atual: https://github.com/solucentergestao-pb/Solucenter/pull/14 (branch feat/customer-first-unit-20261009, baseada na main após a integração da PR #13; ainda não integrada nem publicada). As entregas financeiras PRs #9/#10 permanecem separadas e preservadas.
+Entrega atual integrada: https://github.com/solucentergestao-pb/Solucenter/pull/14, sobre a main após a PR #13. Ainda não publicada. As entregas financeiras PRs #9/#10 permanecem separadas e preservadas.
 
 ## O que o percentual significa
 Índice de cumprimento de marcos de entrega da V1, com pesos definidos hoje. Não é estimativa de horas, quantidade de código correta nem porcentagem de funcionalidades operacionais. A existência de código recebe crédito apenas no marco de estrutura disponível; não implica funcionamento. Não há percentual global histórico anterior confiável para comparação. A linha de base é conservadora e provisória: 40/100 pontos reconhecidos e 60/100 ainda não comprovados. Pode ser revisada para baixo se a auditoria invalidar marcos. Não converter ausência de evidência em confirmação de falha.
@@ -146,5 +146,5 @@ Próxima meta: fechar contas a pagar/fluxo de caixa/DRE com integração Postgre
 - CI PostgreSQL16/Node22 aprovado em https://github.com/solucentergestao-pb/Solucenter/actions/runs/37922807344 (commit 17057952166f190860ab2552b59719ea708b3bca): migrations, 62 testes, typecheck e builds API/web.
 - O cenário novo percorre cliente → unidade → ambiente → equipamento → QR, gera PDF/PNG, verifica rollback lógico de entrada inválida e bloqueia cliente/unidades/QR para empresa estrangeira.
 - Pontuação anterior/atual: 46/100 → 49/100, ganho +3 p.p.; faltam 51 pontos. O crédito corresponde ao fluxo real e casos negativos da frente clientes/unidades/ambientes. A frente equipamentos/QR/fotos permanece comprovada na versão escolhida da main pelo novo cenário.
-- Código salvo na PR #14; ainda não integrado à main nem publicado. Nenhum registro real foi usado ou alterado.
-- Próxima meta: integrar com segurança a PR #14, consolidar as PRs financeiras #9/#10 sobre a main atual e validar publicação/smoke test quando o acesso ao Render estiver disponível nesta sessão.
+- Código salvo e integrado à main pela PR #14 (merge 8ae740e8955e42e3fd1de092bbb8ab9521dbd177); ainda não publicado. Nenhum registro real foi usado ou alterado.
+- Próxima meta: consolidar as PRs financeiras #9/#10 sobre a main atual e validar publicação/smoke test quando o acesso ao Render estiver disponível nesta sessão.
