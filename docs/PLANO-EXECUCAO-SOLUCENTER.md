@@ -1,7 +1,7 @@
 # SOLUCENTER — Plano e acompanhamento de conclusão
 Data-base: 03/10/2026, America/Fortaleza.
 Repositório: solucentergestao-pb/Solucenter.
-Entrega atual: https://github.com/solucentergestao-pb/Solucenter/pull/3 (branch fix/financial-integrity, baseada no PR #2; ainda não integrada nem publicada).
+Entrega atual: https://github.com/solucentergestao-pb/Solucenter/pull/14 (branch feat/customer-first-unit-20261009, baseada na main após a integração da PR #13; ainda não integrada nem publicada). As entregas financeiras PRs #9/#10 permanecem separadas e preservadas.
 
 ## O que o percentual significa
 Índice de cumprimento de marcos de entrega da V1, com pesos definidos hoje. Não é estimativa de horas, quantidade de código correta nem porcentagem de funcionalidades operacionais. A existência de código recebe crédito apenas no marco de estrutura disponível; não implica funcionamento. Não há percentual global histórico anterior confiável para comparação. A linha de base é conservadora e provisória: 40/100 pontos reconhecidos e 60/100 ainda não comprovados. Pode ser revisada para baixo se a auditoria invalidar marcos. Não converter ausência de evidência em confirmação de falha.
@@ -102,3 +102,49 @@ Meta do ciclo: retirar caminhos públicos/arbitrários das fotos de equipamento 
 Pontuação anterior 40/100; atual 40/100; ganho +0 p.p.; restante 60/100. O código e o teste isolado não satisfazem os 2 pontos de armazenamento privado porque ainda faltam disco/object storage real, migração dos arquivos legados e validação após deploy.
 
 Próxima meta: migrar fotos legadas de forma segura quando houver ambiente e testar pelas telas o ciclo equipamento → OS → foto → relatório. Não alterar dados de produção sem acesso e cópia de segurança confirmados.
+
+## Execução de 06/10/2026 — PDFs privados e dashboard isolado
+Meta do ciclo: fechar o fluxo real de documentos/dashboard com casos negativos e retirar a exposição direta dos PDFs.
+- PDFs de orçamento e relatório técnico agora são gravados no armazenamento privado; API e tela não recebem o caminho físico.
+- Link público usa token aleatório de 48 caracteres hexadecimais, expira por padrão em 7 dias e entrega o PDF somente após validar token, prazo e arquivo. A validade pode ser configurada entre 1 e 90 dias.
+- Geração exige `document.write`; consulta autenticada exige `document.read`. Empresa estrangeira e técnico sem permissão são bloqueados.
+- Falha ao registrar o documento remove o PDF recém-criado para evitar arquivo órfão.
+- Tela de documentos substituiu a digitação de UUID pela seleção de orçamento ou OS cadastrados e informa a expiração do link.
+- Dashboard exige `dashboard.read`. Teste isolado cria uma segunda empresa e comprova receita, custos, lucro, série mensal e bloqueio do perfil sem permissão.
+- PostgreSQL 16/Node 22 aprovou migrations, 56 testes, typecheck e builds API/web. Evidência: https://github.com/solucentergestao-pb/Solucenter/actions/runs/37457067231.
+- Os testes geram e leem PDFs reais (`%PDF`), validam orçamento e relatório de OS, token adulterado, link expirado, tenant estrangeiro e dashboard com totais exatos.
+- Não houve deploy no Render, uso de banco de produção ou alteração de registros reais.
+
+Pontuação anterior 40/100; atual 43/100; ganho +3 p.p.; restante 57/100. Os 3 pontos correspondem ao fluxo real e aos casos negativos de integração da frente documentos/dashboard. Os 2 pontos de publicação dessa frente continuam pendentes; build ou número de testes não foram contados novamente.
+
+Próxima meta: fechar contas a pagar/fluxo de caixa/DRE com integração PostgreSQL e casos negativos, completando a parte financeira ainda pendente. Em seguida, avançar agenda/preventivas/notificações/portal. A migração de fotos antigas e o smoke test de produção continuam dependentes de acesso ao ambiente persistente.
+
+## 07/10/2026 — Integridade de despesas e contas a pagar
+- Base preservada: PR #9, commit 2dff1d713ae9a8e9336f5669444a0f1a1471e94b; entrega em branch fix/management-finance-integrity, sem integração/publicação.
+- Despesas rejeitam categoria estrangeira, inexistente ou inativa e OS de outra empresa; valores de despesas/contas a pagar limitados a duas casas decimais e ao tamanho da coluna.
+- Fluxo de caixa inclui contas a pagar quitadas; despesas abertas não entram. Caixa/DRE devolvem 422 para datas inválidas ou período invertido.
+- Novo teste real PostgreSQL cobre vínculos, centavos, corrida de quitação, isolamento do caixa/DRE, exclusão de despesas abertas e permissões. Typecheck API e 46 testes locais aprovados; CI PostgreSQL16/Node22 aprovado em https://github.com/solucentergestao-pb/Solucenter/actions/runs/37616734245 (commit 8046f17bed68136574e7d026f3a0b278724a2884): migrations, typecheck API/web, 57 testes incluindo 11 de integração real e builds API/web.
+- Pontuação anterior/atual: 43/100 → 43/100, +0 p.p.; faltam 57 pontos. Este bloco melhora integridade, mas não comprova sozinho toda a frente financeira; sem crédito de produção.
+- Meta do ciclo: eliminar falhas de vínculos/caixa e provar regressões no banco isolado; referência de até 10 p.p., sem ganho artificial.
+- Pendências: financeiro planejado/realizado completo e telas; Render/banco homologação/storage ainda sem acesso confirmado. Próxima meta: conectar a tela DRE (hoje mostra valores vazios) à API, validar planejado/realizado e preparar publicação quando houver acesso.
+
+## 08/10/2026 — QR público e etiqueta do equipamento
+- A main avançou: PRs #1, #8 e #11 foram integradas. A navegação ambiente → cadastro de equipamento está salva na main; a PR #12 preserva o trabalho posterior de QR/etiqueta. A PR financeira #10 continua aberta e separada.
+- O QR exclusivo agora abre `/q/<token>` e consulta uma rota pública que exige token aleatório ativo e não revogado. Token malformado, desconhecido ou revogado retorna 404.
+- A ficha pública mostra somente identificação técnica, estado, unidade e ambiente. Nome/telefone/endereço do cliente, IDs internos e histórico de atendimento não são expostos.
+- Etiqueta PDF 60 × 40 mm e QR em PNG foram gerados como binários reais; empresa estrangeira não consegue baixar a etiqueta autenticada.
+- CI PostgreSQL16/Node22 aprovado em https://github.com/solucentergestao-pb/Solucenter/actions/runs/37771920943 (commit 44b6d4201261d9dce95da066e55f9e0ff21c0b1d): migrations, 57 testes, typecheck e builds API/web. Três cenários novos verificam ficha/token, privacidade/revogação e PNG/PDF/isolamento.
+- Pontuação anterior/atual: 43/100 → 46/100, ganho +3 p.p.; faltam 54 pontos. O crédito corresponde ao fluxo real e aos casos negativos da frente equipamentos/QR/fotos, somando as evidências já aprovadas de cadastro/fotos privadas e o QR agora concluído. Não há crédito de publicação.
+- Código salvo na PR #12; mudança ainda não integrada e versão ainda não publicada. Render/banco homologação/storage permanecem sem acesso confirmado nesta execução.
+- Próxima meta: completar o cadastro conjunto cliente + primeira unidade/endereço e validar o ciclo pelas telas. Depois, integrar as PRs abertas na ordem segura e executar smoke test de publicação quando houver acesso ao ambiente.
+
+## 09/10/2026 — cliente e primeira unidade em transação única
+- A PR #13 foi integrada à main com a versão autenticada da consulta por QR e etiqueta 60 × 40 mm. A PR #12 permanece aberta e conflitante; não foi mesclada nem sobrescrita.
+- O cadastro web agora reúne dados completos do cliente e da primeira unidade/endereço e, após salvar, segue para a criação de ambientes.
+- A API mantém compatibilidade com clientes sem primeira unidade, mas, quando `firstUnit` é enviado, cria cliente e unidade na mesma transação. Uma unidade inválida não deixa cliente parcial no banco.
+- CPF/CNPJ e e-mail vazios são normalizados; múltiplos clientes sem documento podem ser cadastrados, enquanto documento realmente duplicado retorna 409.
+- CI PostgreSQL16/Node22 aprovado em https://github.com/solucentergestao-pb/Solucenter/actions/runs/37922807344 (commit 17057952166f190860ab2552b59719ea708b3bca): migrations, 62 testes, typecheck e builds API/web.
+- O cenário novo percorre cliente → unidade → ambiente → equipamento → QR, gera PDF/PNG, verifica rollback lógico de entrada inválida e bloqueia cliente/unidades/QR para empresa estrangeira.
+- Pontuação anterior/atual: 46/100 → 49/100, ganho +3 p.p.; faltam 51 pontos. O crédito corresponde ao fluxo real e casos negativos da frente clientes/unidades/ambientes. A frente equipamentos/QR/fotos permanece comprovada na versão escolhida da main pelo novo cenário.
+- Código salvo na PR #14; ainda não integrado à main nem publicado. Nenhum registro real foi usado ou alterado.
+- Próxima meta: integrar com segurança a PR #14, consolidar as PRs financeiras #9/#10 sobre a main atual e validar publicação/smoke test quando o acesso ao Render estiver disponível nesta sessão.
