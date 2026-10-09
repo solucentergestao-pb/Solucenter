@@ -1,53 +1,15 @@
 "use client";
 import {useEffect,useState} from 'react';
+import {useRouter} from 'next/navigation';
 import {api} from '../../lib/api';
 
+const initial={type:'PJ',name:'',legalName:'',tradeName:'',cpfCnpj:'',phone:'',whatsapp:'',email:'',notes:'',firstUnit:{name:'Matriz',cep:'',street:'',number:'',complement:'',neighborhood:'',city:'',state:'PB',reference:''}};
 export default function Clientes(){
- const[list,setList]=useState<any[]>([]);
- const[name,setName]=useState('');
- const[type,setType]=useState('PJ');
- const[whatsapp,setWhatsapp]=useState('');
- const[error,setError]=useState('');
- const[busy,setBusy]=useState(false);
-
- async function load(){
-  try{setList(await api('/customers'));setError('')}
-  catch(e:any){setError(e?.message??'Não foi possível carregar os clientes.')}
- }
+ const router=useRouter();const[list,setList]=useState<any[]>([]),[form,setForm]=useState(initial),[error,setError]=useState(''),[busy,setBusy]=useState(false);
+ async function load(){try{setList(await api('/customers'));setError('')}catch(e:any){setError(e?.message??'Não foi possível carregar os clientes.')}}
  useEffect(()=>{load()},[]);
-
- async function add(e:React.FormEvent){
-  e.preventDefault();
-  if(busy)return;
-  setError('');
-  setBusy(true);
-  try{
-   await api('/customers',{method:'POST',body:JSON.stringify({name:name.trim(),type,whatsapp:whatsapp.trim()})});
-   setName('');
-   setWhatsapp('');
-   await load();
-  }catch(e:any){
-   setError(e?.message??'Não foi possível salvar o cliente.');
-  }finally{
-   setBusy(false);
-  }
- }
-
- return <main className="shell">
-  <h1>Clientes</h1>
-  {error&&<p className="error" role="alert">{error}</p>}
-  <div className="grid">
-   <form className="card" onSubmit={add}>
-    <h3>Novo cliente</h3>
-    <div className="field">Tipo<select value={type} onChange={e=>setType(e.target.value)}><option>PJ</option><option>PF</option></select></div>
-    <div className="field">Nome / Razão Social<input className="input" value={name} onChange={e=>setName(e.target.value)} required minLength={2}/></div>
-    <div className="field">WhatsApp<input className="input" value={whatsapp} onChange={e=>setWhatsapp(e.target.value)}/></div>
-    <button className="btn" disabled={busy}>{busy?'Salvando…':'Salvar cliente'}</button>
-   </form>
-   <div className="card">
-    <h3>Clientes cadastrados</h3>
-    {list.map(c=><div key={c.id} style={{padding:'10px 0',borderBottom:'1px solid #eee'}}><a href={'/clientes/'+c.id}><b>{c.name}</b></a><br/><small>{c.code} · {c.units?.length??0} unidade(s)</small></div>)}
-   </div>
-  </div>
- </main>
+ function customer(name:string,value:string){setForm(current=>({...current,[name]:value}))}
+ function unit(name:string,value:string){setForm(current=>({...current,firstUnit:{...current.firstUnit,[name]:name==='state'?value.toUpperCase():value}}))}
+ async function add(e:React.FormEvent){e.preventDefault();if(busy)return;setError('');setBusy(true);try{const created:any=await api('/customers',{method:'POST',body:JSON.stringify(form)});router.push('/clientes/'+created.id)}catch(e:any){setError(e?.message??'Não foi possível salvar o cliente e a unidade.');setBusy(false)}}
+ return <main className="shell"><h1>Clientes</h1><p className="muted">Cadastre os dados do cliente e o primeiro endereço no mesmo fluxo.</p>{error&&<p className="error" role="alert">{error}</p>}<div className="grid two"><form className="card formGrid" onSubmit={add}><h3 className="full">Dados do cliente</h3><div className="field"><label>Tipo</label><select value={form.type} onChange={e=>customer('type',e.target.value)}><option value="PJ">Pessoa jurídica</option><option value="PF">Pessoa física</option></select></div><div className="field"><label>Nome / razão social</label><input value={form.name} onChange={e=>customer('name',e.target.value)} required minLength={2}/></div><div className="field"><label>Nome fantasia</label><input value={form.tradeName} onChange={e=>customer('tradeName',e.target.value)}/></div><div className="field"><label>{form.type==='PJ'?'CNPJ':'CPF'}</label><input value={form.cpfCnpj} onChange={e=>customer('cpfCnpj',e.target.value)}/></div><div className="field"><label>Telefone</label><input type="tel" value={form.phone} onChange={e=>customer('phone',e.target.value)}/></div><div className="field"><label>WhatsApp</label><input type="tel" value={form.whatsapp} onChange={e=>customer('whatsapp',e.target.value)}/></div><div className="field full"><label>E-mail</label><input type="email" value={form.email} onChange={e=>customer('email',e.target.value)}/></div><div className="field full"><label>Observações</label><textarea value={form.notes} onChange={e=>customer('notes',e.target.value)}/></div><h3 className="full">Primeira unidade / endereço</h3><div className="field"><label>Nome da unidade</label><input value={form.firstUnit.name} onChange={e=>unit('name',e.target.value)} required minLength={2}/></div><div className="field"><label>CEP</label><input value={form.firstUnit.cep} onChange={e=>unit('cep',e.target.value)}/></div><div className="field"><label>Rua</label><input value={form.firstUnit.street} onChange={e=>unit('street',e.target.value)} required minLength={2}/></div><div className="field"><label>Número</label><input value={form.firstUnit.number} onChange={e=>unit('number',e.target.value)} required/></div><div className="field"><label>Complemento</label><input value={form.firstUnit.complement} onChange={e=>unit('complement',e.target.value)}/></div><div className="field"><label>Bairro</label><input value={form.firstUnit.neighborhood} onChange={e=>unit('neighborhood',e.target.value)}/></div><div className="field"><label>Cidade</label><input value={form.firstUnit.city} onChange={e=>unit('city',e.target.value)} required minLength={2}/></div><div className="field"><label>UF</label><input value={form.firstUnit.state} onChange={e=>unit('state',e.target.value)} required minLength={2} maxLength={2}/></div><div className="field full"><label>Ponto de referência</label><input value={form.firstUnit.reference} onChange={e=>unit('reference',e.target.value)}/></div><button className="btn btnPrimary full" disabled={busy}>{busy?'Salvando cliente e unidade…':'Salvar e cadastrar ambiente'}</button></form><div className="card"><h3>Clientes cadastrados</h3>{list.length===0&&<p className="muted">Nenhum cliente cadastrado.</p>}{list.map(c=><div key={c.id} style={{padding:'10px 0',borderBottom:'1px solid #eee'}}><a href={'/clientes/'+c.id}><b>{c.name}</b></a><br/><small>{c.code} · {c.units?.length??0} unidade(s)</small></div>)}</div></div></main>
 }
