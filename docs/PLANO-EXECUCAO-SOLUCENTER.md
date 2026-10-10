@@ -1,7 +1,7 @@
 # SOLUCENTER — Plano e acompanhamento de conclusão
 Data-base: 03/10/2026, America/Fortaleza.
 Repositório: solucentergestao-pb/Solucenter.
-Entrega atual integrada: https://github.com/solucentergestao-pb/Solucenter/pull/14, sobre a main após a PR #13. Ainda não publicada. As entregas financeiras PRs #9/#10 permanecem separadas e preservadas.
+Entrega atual: https://github.com/solucentergestao-pb/Solucenter/pull/16 (branch integrate/finance-documents-20261010, baseada na main após as PRs #13/#14; CI aprovado, ainda não integrada nem publicada). Consolida o conteúdo preservado das PRs #9/#10.
 
 ## O que o percentual significa
 Índice de cumprimento de marcos de entrega da V1, com pesos definidos hoje. Não é estimativa de horas, quantidade de código correta nem porcentagem de funcionalidades operacionais. A existência de código recebe crédito apenas no marco de estrutura disponível; não implica funcionamento. Não há percentual global histórico anterior confiável para comparação. A linha de base é conservadora e provisória: 40/100 pontos reconhecidos e 60/100 ainda não comprovados. Pode ser revisada para baixo se a auditoria invalidar marcos. Não converter ausência de evidência em confirmação de falha.
@@ -148,3 +148,16 @@ Próxima meta: fechar contas a pagar/fluxo de caixa/DRE com integração Postgre
 - Pontuação anterior/atual: 46/100 → 49/100, ganho +3 p.p.; faltam 51 pontos. O crédito corresponde ao fluxo real e casos negativos da frente clientes/unidades/ambientes. A frente equipamentos/QR/fotos permanece comprovada na versão escolhida da main pelo novo cenário.
 - Código salvo e integrado à main pela PR #14 (merge 8ae740e8955e42e3fd1de092bbb8ab9521dbd177); ainda não publicado. Nenhum registro real foi usado ou alterado.
 - Próxima meta: consolidar as PRs financeiras #9/#10 sobre a main atual e validar publicação/smoke test quando o acesso ao Render estiver disponível nesta sessão.
+
+
+## 10/10/2026 — consolidação documental e fechamento financeiro
+- A PR #16 consolida sobre a main atual, sem sobrescrever cadastro/QR, os blocos preservados das PRs #9/#10.
+- Documentos: PDFs privados, compartilhamento temporário revogável, histórico autenticado e dashboard isolado por empresa permanecem comprovados; o código agora está reunido na mesma linha de integração.
+- Financeiro: contas a receber e faturamento concorrentes, contas a pagar com claim atômico, despesas com categoria/OS validadas, fluxo de caixa, DRE e planejado x realizado foram exercitados no PostgreSQL descartável.
+- A tela de DRE deixou de exibir placeholders: consulta período real, mostra receita recebida, custos, despesas agrupadas, margem/resultado e comparação planejado x realizado por OS.
+- Casos negativos comprovados incluem empresa estrangeira, técnico sem permissão, relações inválidas, datas invertidas/inválidas, fração de centavo, pagamento/faturamento/quitação concorrentes e conservação de saldo.
+- CI PostgreSQL 16/Node 22 aprovado em https://github.com/solucentergestao-pb/Solucenter/actions/runs/38047433240 (commit bf1a7c720d3edf79e570f4c4dac273f43f628c5a): migrations, 65 testes, typecheck e builds API/web.
+- Pontuação anterior/atual: 49/100 → 52/100, ganho +3 p.p.; faltam 48 pontos. O crédito corresponde ao fluxo real e casos negativos da frente financeiro; não há crédito novo por quantidade de testes, compilação repetida ou simples consolidação.
+- Código salvo na PR #16; ainda não integrado à main nem publicado. Nenhum registro real foi usado ou alterado.
+- Bloqueios de publicação: a sessão continua sem autenticação confirmada no Render, banco de homologação e storage persistente; por isso não foram atribuídos pontos de publicação, uploads privados em produção, backup ou isolamento real.
+- Próxima meta: integrar a PR #16 após a revisão final e cobrir o fluxo real de agenda/preventivas/notificações/portal. Quando houver acesso concreto ao ambiente, executar migrations controladas, smoke test e validação de storage/backup/HTTPS/logs.
