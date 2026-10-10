@@ -3,6 +3,7 @@ import path from 'node:path';
 import {mkdir,readFile,unlink,writeFile} from 'node:fs/promises';
 
 const keyPattern=/^private:\/\/([0-9a-f-]{36})\/(equipment|service-orders)\/([0-9a-f-]{36}\.(?:jpg|png|webp))$/i;
+const documentKeyPattern=/^private:\/\/([0-9a-f-]{36})\/documents\/([0-9a-f-]{36}\.pdf)$/i;
 
 function root(){
  const configured=process.env.PRIVATE_UPLOAD_ROOT?.trim();
@@ -16,6 +17,12 @@ export function privateImagePath(key:string){
  if(!parsed)return null;
  const [,companyId,scope,name]=parsed;
  return path.join(root(),companyId,scope,name);
+}
+
+export function privateDocumentPath(key:string){
+ const parsed=key.match(documentKeyPattern);
+ if(!parsed)return null;
+ return path.join(root(),parsed[1],'documents',parsed[2]);
 }
 
 export function imageExtension(mimetype:string,content:Buffer){
@@ -45,4 +52,17 @@ export async function readPrivateImage(key:string,companyId:string){
 }
 
 export async function deletePrivateImage(key:string){const filePath=privateImagePath(key);if(filePath)await unlink(filePath).catch(()=>{});}
+export async function savePrivateDocument(companyId:string,content:Buffer){
+ const name=`${crypto.randomUUID()}.pdf`,dir=path.join(root(),companyId,'documents');
+ await mkdir(dir,{recursive:true,mode:0o700});
+ await writeFile(path.join(dir,name),content,{mode:0o600});
+ return `private://${companyId}/documents/${name}`;
+}
+export async function readPrivateDocument(key:string,companyId:string){
+ const parsed=key.match(documentKeyPattern);
+ if(!parsed||parsed[1]!==companyId)return null;
+ const filePath=privateDocumentPath(key);
+ return filePath?readFile(filePath):null;
+}
+export async function deletePrivateDocument(key:string){const filePath=privateDocumentPath(key);if(filePath)await unlink(filePath).catch(()=>{});}
 export const photoDownloadUrl=(kind:'equipment'|'service-order',id:string)=>`/api/v1/uploads/${kind}-photos/${id}`;

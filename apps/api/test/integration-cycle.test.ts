@@ -126,6 +126,75 @@ describe.skipIf(!database)('PostgreSQL: operational cycle and tenant isolation',
   expect((await call('POST',`/service-orders/${os.id}/photos`,{category:'BEFORE',fileUrl:'https://attacker.invalid/photo.jpg'})).statusCode).toBe(404);
   expect(await db.servicePhoto.count({where:{serviceOrderId:os.id}})).toBe(1);
  });
+ it('generates private PDFs with expiring public links and tenant guards',async()=>{
+  const {customer,unit,os}=await fixture();
+  const quote=await db.quote.create({data:{companyId,customerId:customer.id,unitId:unit.id,createdById:userId,quoteNumber:randomUUID(),subtotal:500,total:500,estimatedCost:100,estimatedProfit:400,items:{create:{itemType:'SERVICE',description:'Manutenção completa',quantity:1,unitPrice:500,unitCost:100}}}});
+  const generated=await call('POST',`/documents/quotes/${quote.id}/pdf`);
+  expect(generated.statusCode).toBe(200);expect(generated.json().document.fileUrl).toBeUndefined();expect(generated.json().document.expiresAt).toBeTruthy();
+  const quoteDocument=await db.generatedDocument.findUniqueOrThrow({where:{id:generated.json().document.id}});
+  expect(quoteDocument.fileUrl).toMatch(new RegExp(`^private://${companyId}/documents/`));
+  const publicPdf=await app.inject({method:'GET',url:new URL(generated.json().shareUrl).pathname});
+  expect(publicPdf.statusCode).toBe(200);expect(publicPdf.headers['content-type']).toContain('application/pdf');expect(publicPdf.rawPayload.subarray(0,4).toString()).toBe('%PDF');
+  expect((await call('POST',`/documents/quotes/${quote.id}/pdf`,undefined,foreignToken)).statusCode).toBe(404);
+  const technician=app.jwt.sign({id:userId,companyId,role:'TECNICO',permissions:[]});
+  expect((await call('POST',`/documents/quotes/${quote.id}/pdf`,undefined,technician)).statusCode).toBe(403);
+  const report=await call('POST',`/documents/service-orders/${os.id}/pdf`);expect(report.statusCode).toBe(200);
+  expect((await app.inject({method:'GET',url:new URL(report.json().shareUrl).pathname})).statusCode).toBe(200);
+  await db.generatedDocument.update({where:{id:quoteDocument.id},data:{expiresAt:new Date(Date.now()-1000)}});
+  expect((await app.inject({method:'GET',url:new URL(generated.json().shareUrl).pathname})).statusCode).toBe(404);
+  expect((await app.inject({method:'GET',url:'/public/documents/not-a-token'})).statusCode).toBe(404);
+ });
+ it('isolates dashboard totals and blocks roles without dashboard permission',async()=>{
+  const company=await db.company.create({data:{tradeName:'Dashboard Isolated'}});
+  const role=await db.role.create({data:{companyId:company.id,name:'ADMIN'}});
+  const user=await db.user.create({data:{companyId:company.id,roleId:role.id,name:'Dashboard Admin',email:`dash-${randomUUID()}@example.com`,passwordHash:'unused'}});
+  const customer=await db.customer.create({data:{companyId:company.id,code:randomUUID(),name:'Dashboard Customer',type:'PJ'}});
+  const unit=await db.customerUnit.create({data:{customerId:customer.id,name:'Matriz'}});
+  const os=await db.serviceOrder.create({data:{companyId:company.id,customerId:customer.id,unitId:unit.id,createdById:user.id,orderNumber:randomUUID(),reportedProblem:'Dashboard',status:'COMPLETED',completedAt:new Date(),finalValue:250,laborCost:100}});
+  const receivable=await db.accountReceivable.create({data:{companyId:company.id,customerId:customer.id,serviceOrderId:os.id,description:'Dashboard',originalAmount:250,openAmount:0,dueDate:new Date(),status:'PAID'}});
+  await db.payment.create({data:{receivableId:receivable.id,amount:250,paymentMethod:'PIX'}});
+  const dashboardToken=app.jwt.sign({id:user.id,companyId:company.id,role:'ADMIN',permissions:[]});
+  const dashboard=await call('GET','/dashboard',undefined,dashboardToken);expect(dashboard.statusCode).toBe(200);
+  expect(dashboard.json()).toMatchObject({revenue:250,costs:100,profit:150,completedOrders:1});
+  const monthly=await call('GET','/dashboard/monthly?months=3',undefined,dashboardToken);expect(monthly.statusCode).toBe(200);
+  expect(monthly.json().months.at(-1)).toMatchObject({actualRevenue:250,actualCost:100,actualProfit:150});
+  const technician=app.jwt.sign({id:user.id,companyId:company.id,role:'TECNICO',permissions:[]});
+  expect((await call('GET','/dashboard',undefined,technician)).statusCode).toBe(403);
+ });
+ it('guards expense relations, cents, payable races and scoped cash reports',async()=>{
+  const company=await db.company.create({data:{tradeName:'Isolated cash test'}});
+  const access=app.jwt.sign({id:userId,companyId:company.id,role:'ADMIN',permissions:[]});
+  const category=await db.expenseCategory.create({data:{companyId:company.id,name:'Office',dreGroup:'ADMIN'}});
+  const foreignCategory=await db.expenseCategory.create({data:{companyId:foreignCompanyId,name:randomUUID(),dreGroup:'ADMIN'}});
+  const inactive=await db.expenseCategory.create({data:{companyId:company.id,name:'Inactive',dreGroup:'ADMIN',active:false}});
+  const {os}=await fixture();
+  const expense={categoryId:category.id,description:'Office cost',amount:20.25,competenceDate:'2026-10-07'};
+  for(const categoryId of [foreignCategory.id,inactive.id,randomUUID()])expect((await call('POST','/management-finance/expenses',{...expense,categoryId},access)).statusCode).toBe(422);
+  expect((await call('POST','/management-finance/expenses',{...expense,serviceOrderId:os.id},access)).statusCode).toBe(422);
+  expect((await call('POST','/management-finance/expenses',{...expense,amount:1.001},access)).statusCode).toBe(422);
+  expect(await db.expense.count({where:{companyId:company.id}})).toBe(0);
+  expect((await call('POST','/management-finance/expenses',expense,access)).statusCode).toBe(201);
+  expect((await call('POST','/management-finance/expenses',{...expense,status:'OPEN',amount:99},access)).statusCode).toBe(201);
+  const payable={description:'Supplier',amount:30.75,dueDate:'2026-10-07'};
+  expect((await call('POST','/management-finance/payables',{...payable,amount:1.001},access)).statusCode).toBe(422);
+  const created=await call('POST','/management-finance/payables',payable,access);expect(created.statusCode).toBe(201);const id=created.json().id;
+  expect((await call('POST',`/management-finance/payables/${id}/pay`,{paymentMethod:'PIX'},foreignToken)).statusCode).toBe(409);
+  expect((await db.accountPayable.findUniqueOrThrow({where:{id}})).status).toBe('OPEN');
+  const payments=await Promise.all([call('POST',`/management-finance/payables/${id}/pay`,{paymentMethod:'PIX',paidDate:'2026-10-07'},access),call('POST',`/management-finance/payables/${id}/pay`,{paymentMethod:'CASH',paidDate:'2026-10-08'},access)]);
+  expect(payments.map(r=>r.statusCode).sort()).toEqual([200,409]);
+  await db.accountPayable.create({data:{companyId:foreignCompanyId,...payable,dueDate:new Date(payable.dueDate),status:'PAID',paidDate:new Date('2026-10-07')}});
+  const period='?from=2026-01-01&to=2027-01-01';
+  const cash=await call('GET','/management-finance/cash-flow'+period,undefined,access);expect(cash.statusCode).toBe(200);
+  expect(cash.json().inflows).toEqual([]);expect(cash.json().outflows).toHaveLength(2);
+  expect(cash.json().outflows.map((x:any)=>x.amount).sort((a:number,b:number)=>a-b)).toEqual([20.25,30.75]);
+  const dre=await call('GET','/management-finance/dre'+period,undefined,access);expect(dre.statusCode).toBe(200);expect(dre.json()).toMatchObject({revenue:0,operatingExpenses:20.25,operatingResult:-20.25});
+  for(const route of ['cash-flow','dre']){
+   expect((await call('GET',`/management-finance/${route}?from=invalid&to=2026-10-07`,undefined,access)).statusCode).toBe(422);
+   expect((await call('GET',`/management-finance/${route}?from=2026-10-08&to=2026-10-07`,undefined,access)).statusCode).toBe(422);
+   const technician=app.jwt.sign({id:userId,companyId:company.id,role:'TECNICO',permissions:[]});
+   expect((await call('GET',`/management-finance/${route}`+period,undefined,technician)).statusCode).toBe(403);
+  }
+ });
  afterAll(async()=>{await app?.close();await db?.$disconnect();if(privateRoot)await rm(privateRoot,{recursive:true,force:true})});
  it('logs in, registers hierarchy/equipment, converts a quote, executes and receives an OS',async()=>{
   const login=await call('POST','/auth/login',{email,password},'');expect(login.statusCode).toBe(200);token=login.json().accessToken;
@@ -148,6 +217,12 @@ describe.skipIf(!database)('PostgreSQL: operational cycle and tenant isolation',
   const invoiceResponse=await call('POST',`/service-orders/${os.id}/invoice`,{dueDate:'2026-10-15'});expect(invoiceResponse.statusCode).toBe(200);const invoice=invoiceResponse.json();
   expect((await call('POST',`/finance/receivables/${invoice.id}/payments`,{amount:501,paymentMethod:'PIX'})).statusCode).toBe(409);
   const payment=await call('POST',`/finance/receivables/${invoice.id}/payments`,{amount:500,paymentMethod:'PIX'});expect(payment.statusCode).toBe(200);expect(payment.json().receivable.status).toBe('PAID');
+  const variance=await call('GET','/management-finance/planned-vs-actual');expect(variance.statusCode).toBe(200);
+  expect(variance.json()).toContainEqual(expect.objectContaining({orderNumber:os.orderNumber,plannedRevenue:500,actualRevenue:500,plannedProfit:400,actualProfit:400}));
+  const foreignVariance=await call('GET','/management-finance/planned-vs-actual',undefined,foreignToken);expect(foreignVariance.statusCode).toBe(200);
+  expect(foreignVariance.json().some((x:any)=>x.orderNumber===os.orderNumber)).toBe(false);
+  const technician=app.jwt.sign({id:userId,companyId,role:'TECNICO',permissions:[]});
+  expect((await call('GET','/management-finance/planned-vs-actual',undefined,technician)).statusCode).toBe(403);
   expect((await db.serviceOrder.findUniqueOrThrow({where:{id:os.id}})).status).toBe('RECEIVED');
   expect((await call('GET',`/customers/${customer.id}`,undefined,foreignToken)).statusCode).toBe(404);
  },30000);
