@@ -25,6 +25,8 @@ localizam o schema sem argumentos adicionais.
 - `NODE_ENV`: `production`.
 - `PRIVATE_UPLOAD_ROOT`: caminho absoluto de um disco persistente e não público
   (por exemplo, `/var/data/solucenter-private`).
+- `DOCUMENT_SHARE_DAYS`: validade dos links públicos de PDF, entre 1 e 90
+  dias. Se omitida, a validade é de 7 dias.
 
 Não registre os valores dessas variáveis no GitHub ou em documentos.
 O diretório de fotos não pode estar dentro de uma pasta servida estaticamente.
