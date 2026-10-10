@@ -1,7 +1,7 @@
 # SOLUCENTER — Plano e acompanhamento de conclusão
 Data-base: 03/10/2026, America/Fortaleza.
 Repositório: solucentergestao-pb/Solucenter.
-Entrega atual: https://github.com/solucentergestao-pb/Solucenter/pull/16 (branch integrate/finance-documents-20261010, baseada na main após as PRs #13/#14; CI aprovado, ainda não integrada nem publicada). Consolida o conteúdo preservado das PRs #9/#10.
+Entrega atual integrada: https://github.com/solucentergestao-pb/Solucenter/pull/16 (merge c0bc34de01120303bc371bb717e99b85a598f923). Consolida o conteúdo preservado das PRs #9/#10; ainda não publicada.
 
 ## O que o percentual significa
 Índice de cumprimento de marcos de entrega da V1, com pesos definidos hoje. Não é estimativa de horas, quantidade de código correta nem porcentagem de funcionalidades operacionais. A existência de código recebe crédito apenas no marco de estrutura disponível; não implica funcionamento. Não há percentual global histórico anterior confiável para comparação. A linha de base é conservadora e provisória: 40/100 pontos reconhecidos e 60/100 ainda não comprovados. Pode ser revisada para baixo se a auditoria invalidar marcos. Não converter ausência de evidência em confirmação de falha.
@@ -158,6 +158,6 @@ Próxima meta: fechar contas a pagar/fluxo de caixa/DRE com integração Postgre
 - Casos negativos comprovados incluem empresa estrangeira, técnico sem permissão, relações inválidas, datas invertidas/inválidas, fração de centavo, pagamento/faturamento/quitação concorrentes e conservação de saldo.
 - CI PostgreSQL 16/Node 22 aprovado em https://github.com/solucentergestao-pb/Solucenter/actions/runs/38047433240 (commit bf1a7c720d3edf79e570f4c4dac273f43f628c5a): migrations, 65 testes, typecheck e builds API/web.
 - Pontuação anterior/atual: 49/100 → 52/100, ganho +3 p.p.; faltam 48 pontos. O crédito corresponde ao fluxo real e casos negativos da frente financeiro; não há crédito novo por quantidade de testes, compilação repetida ou simples consolidação.
-- Código salvo na PR #16; ainda não integrado à main nem publicado. Nenhum registro real foi usado ou alterado.
+- Código salvo e integrado à main pela PR #16 (merge c0bc34de01120303bc371bb717e99b85a598f923); ainda não publicado. Nenhum registro real foi usado ou alterado.
 - Bloqueios de publicação: a sessão continua sem autenticação confirmada no Render, banco de homologação e storage persistente; por isso não foram atribuídos pontos de publicação, uploads privados em produção, backup ou isolamento real.
-- Próxima meta: integrar a PR #16 após a revisão final e cobrir o fluxo real de agenda/preventivas/notificações/portal. Quando houver acesso concreto ao ambiente, executar migrations controladas, smoke test e validação de storage/backup/HTTPS/logs.
+- Próxima meta: cobrir o fluxo real de agenda/preventivas/notificações/portal. Quando houver acesso concreto ao ambiente, executar migrations controladas, smoke test e validação de storage/backup/HTTPS/logs.
