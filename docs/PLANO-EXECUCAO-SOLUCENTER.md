@@ -1,7 +1,7 @@
 # SOLUCENTER — Plano e acompanhamento de conclusão
 Data-base: 03/10/2026, America/Fortaleza.
 Repositório: solucentergestao-pb/Solucenter.
-Entrega atual publicada: main no commit 60b6d3ad9df4cb119d63ee8e41ffef2a9132db7a em Web/API no Render. Entrega em validação: https://github.com/solucentergestao-pb/Solucenter/pull/24 (agenda/preventivas; CI aprovado, ainda não integrada nem publicada).
+Entrega atual integrada: https://github.com/solucentergestao-pb/Solucenter/pull/24 (merge cdda8aa65f9b167d912807049086de5a7aa470b8). Deploy automático em verificação; não confundir integração com validação publicada.
 
 ## O que o percentual significa
 Índice de cumprimento de marcos de entrega da V1, com pesos definidos hoje. Não é estimativa de horas, quantidade de código correta nem porcentagem de funcionalidades operacionais. A existência de código recebe crédito apenas no marco de estrutura disponível; não implica funcionamento. Não há percentual global histórico anterior confiável para comparação. A linha de base é conservadora e provisória: 40/100 pontos reconhecidos e 60/100 ainda não comprovados. Pode ser revisada para baixo se a auditoria invalidar marcos. Não converter ausência de evidência em confirmação de falha.
@@ -174,5 +174,5 @@ Meta do ciclo: confirmar o estado real publicado sem alterar dados e fechar o fl
 - CI PostgreSQL 16/Node 22 aprovado em https://github.com/solucentergestao-pb/Solucenter/actions/runs/38137659849 (commit ef626fb7f0ab87dee209f12191ea8d4520a3571f): migrations, 66 testes, typecheck e builds API/web.
 - O cenário real cria agenda e plano, verifica duas ocorrências, lista preventiva próxima e cobre concorrência, período inválido, empresa estrangeira, técnico sem escrita, técnico/OS/equipamentos estrangeiros e frequência personalizada inválida.
 - Pontuação anterior/atual: 52/100 → 57/100, ganho +5 p.p.; faltam 43 pontos. São +3 pela integração real da frente agenda/preventivas e +2 pela publicação/validação real da frente clientes/unidades/ambientes.
-- Código salvo na PR #24; ainda não integrado à main nem publicado. Nenhum registro de produção foi criado, alterado ou removido nesta execução.
-- Próxima meta: integrar a PR #24, confirmar o deploy automático sem executar cadastros adicionais e fechar notificações/portal com integração PostgreSQL e isolamento. Persistem pendências de backup restaurado, storage privado real, HTTPS/secrets/logs auditados, isolamento completo em produção e aceite final.
+- Código salvo e integrado à main pela PR #24 (merge cdda8aa65f9b167d912807049086de5a7aa470b8); deploy automático em verificação. Nenhum registro de produção foi criado, alterado ou removido nesta execução.
+- Próxima meta: confirmar o deploy automático sem executar cadastros adicionais e fechar notificações/portal com integração PostgreSQL e isolamento. Persistem pendências de backup restaurado, storage privado real, HTTPS/secrets/logs auditados, isolamento completo em produção e aceite final.
