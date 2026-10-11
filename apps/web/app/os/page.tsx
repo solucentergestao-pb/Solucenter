@@ -6,7 +6,8 @@ import {api} from '../../lib/api';
 const statusLabel:Record<string,string>={
  OPEN:'Aberta',SCHEDULED:'Agendada',ASSIGNED:'Atribuída',ON_THE_WAY:'A caminho',
  IN_PROGRESS:'Em atendimento',WAITING_APPROVAL:'Aguardando aprovação',
- WAITING_PARTS:'Aguardando peças',COMPLETED:'Concluída',INVOICED:'Faturada',CANCELLED:'Cancelada'
+ WAITING_PARTS:'Aguardando peças',COMPLETED:'Concluída',INVOICED:'Faturada',
+ RECEIVED:'Recebida',CANCELLED:'Cancelada'
 };
 
 export default function OsHistory(){
@@ -20,13 +21,14 @@ export default function OsHistory(){
   {error&&<p className="error" role="alert">{error}</p>}
   <div className="card">
    {list.length===0&&!error&&<p className="muted">Nenhuma ordem de serviço cadastrada.</p>}
-   {list.map((os:any)=><div key={os.id} style={{padding:'14px 0',borderBottom:'1px solid #eee'}}>
+   {list.map((os:any)=><Link key={os.id} href={`/os/${os.id}`} style={{display:'block',padding:'14px 0',borderBottom:'1px solid #eee',color:'inherit',textDecoration:'none'}}>
     <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'baseline',flexWrap:'wrap'}}>
      <b>{os.orderNumber}</b><span>{statusLabel[os.status]??os.status}</span>
     </div>
     <div>{os.customer?.name??'Cliente não informado'} · {os.unit?.name??'Unidade não informada'}</div>
     <small>{os.equipment?.assetCode?os.equipment.assetCode+' · ':''}{os.reportedProblem}</small>
-   </div>)}
+    <div className="muted" style={{marginTop:6}}>Toque para abrir os detalhes</div>
+   </Link>)}
   </div>
  </main>
 }
