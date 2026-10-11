@@ -14,9 +14,17 @@ export default function NovaOS(){
   setEnvironments([]);
   setError('');
   if(!unitId)return;
-  try{setEnvironments(await api('/units/'+unitId+'/environments') as any[])}catch(e:any){setError(e?.message??'Não foi possível carregar os ambientes da unidade.')}
+  try{
+   const list=await api('/units/'+unitId+'/environments') as any[];
+   if(list.length){setEnvironments(list);return;}
+   const inferred=equipment.filter((x:any)=>(x.unitId??x.unit?.id)===unitId&&x.environment).map((x:any)=>x.environment).filter((env:any,index:number,all:any[])=>env?.id&&all.findIndex((y:any)=>y.id===env.id)===index);
+   setEnvironments(inferred);
+  }catch(e:any){
+   const inferred=equipment.filter((x:any)=>(x.unitId??x.unit?.id)===unitId&&x.environment).map((x:any)=>x.environment).filter((env:any,index:number,all:any[])=>env?.id&&all.findIndex((y:any)=>y.id===env.id)===index);
+   if(inferred.length)setEnvironments(inferred);else setError(e?.message??'Não foi possível carregar os ambientes da unidade.');
+  }
  }
- const availableEquipment=useMemo(()=>equipment.filter((x:any)=>x.customerId===f.customerId&&x.unitId===f.unitId&&(!f.environmentId||x.environmentId===f.environmentId)),[equipment,f.customerId,f.unitId,f.environmentId]);
+ const availableEquipment=useMemo(()=>equipment.filter((x:any)=>(x.customerId??x.customer?.id)===f.customerId&&(x.unitId??x.unit?.id)===f.unitId&&(!f.environmentId||(x.environmentId??x.environment?.id)===f.environmentId)),[equipment,f.customerId,f.unitId,f.environmentId]);
  function set(k:string,v:any){setF((x:any)=>({...x,[k]:v}))}
  async function action(fn:()=>Promise<void>){if(busy)return;setBusy(true);setError('');try{await fn()}catch(e:any){setError(e?.message??'Não foi possível concluir esta etapa.')}finally{setBusy(false)}}
  async function createOS(){await action(async()=>{const os=await api('/service-orders',{method:'POST',body:JSON.stringify({customerId:f.customerId,unitId:f.unitId,environmentId:f.environmentId||undefined,equipmentId:f.equipmentId||undefined,serviceTypeId:f.serviceTypeId||undefined,priority:f.priority,reportedProblem:f.reportedProblem})});setCreated(os);await api(`/service-orders/${(os as any).id}/start`,{method:'POST',body:'{}'});setStep(3)})}
