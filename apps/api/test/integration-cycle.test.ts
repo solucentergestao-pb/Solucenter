@@ -195,6 +195,46 @@ describe.skipIf(!database)('PostgreSQL: operational cycle and tenant isolation',
    expect((await call('GET',`/management-finance/${route}`+period,undefined,technician)).statusCode).toBe(403);
   }
  });
+ it('protects agenda and preventive plans across tenants and concurrent requests',async()=>{
+  const technicianRole=await db.role.create({data:{companyId,name:'TECNICO'}});
+  const technician=await db.user.create({data:{companyId,roleId:technicianRole.id,name:'Agenda Technician',email:`agenda-${randomUUID()}@example.com`,passwordHash:'unused'}});
+  const foreignRole=await db.role.create({data:{companyId:foreignCompanyId,name:'TECNICO'}});
+  const foreignTechnician=await db.user.create({data:{companyId:foreignCompanyId,roleId:foreignRole.id,name:'Foreign Technician',email:`foreign-agenda-${randomUUID()}@example.com`,passwordHash:'unused'}});
+  const customer=await db.customer.create({data:{companyId,code:randomUUID(),name:'Preventive Customer',type:'PJ'}});
+  const unit=await db.customerUnit.create({data:{customerId:customer.id,name:'Preventive Unit'}});
+  const equipment=await db.equipment.create({data:{companyId,customerId:customer.id,unitId:unit.id,assetCode:randomUUID(),equipmentType:'SPLIT'}});
+  const order=await db.serviceOrder.create({data:{companyId,customerId:customer.id,unitId:unit.id,equipmentId:equipment.id,createdById:userId,orderNumber:randomUUID(),reportedProblem:'Preventive test'}});
+  const foreignCustomer=await db.customer.create({data:{companyId:foreignCompanyId,code:randomUUID(),name:'Foreign Preventive Customer',type:'PJ'}});
+  const foreignUnit=await db.customerUnit.create({data:{customerId:foreignCustomer.id,name:'Foreign Unit'}});
+  const foreignEquipment=await db.equipment.create({data:{companyId:foreignCompanyId,customerId:foreignCustomer.id,unitId:foreignUnit.id,assetCode:randomUUID(),equipmentType:'SPLIT'}});
+  const foreignOrder=await db.serviceOrder.create({data:{companyId:foreignCompanyId,customerId:foreignCustomer.id,unitId:foreignUnit.id,equipmentId:foreignEquipment.id,createdById:foreignTechnician.id,orderNumber:randomUUID(),reportedProblem:'Foreign preventive test'}});
+  const startsAt=new Date(Date.now()+2*86400000),endsAt=new Date(startsAt.getTime()+3600000);
+  const schedule={technicianId:technician.id,serviceOrderId:order.id,title:'Preventive visit',startsAt:startsAt.toISOString(),endsAt:endsAt.toISOString()};
+  expect((await call('POST','/operations/schedule',{...schedule,technicianId:foreignTechnician.id})).statusCode).toBe(422);
+  expect((await call('POST','/operations/schedule',{...schedule,serviceOrderId:foreignOrder.id})).statusCode).toBe(422);
+  expect((await call('POST','/operations/schedule',{...schedule,endsAt:startsAt.toISOString()})).statusCode).toBe(422);
+  const scheduled=await Promise.all([call('POST','/operations/schedule',schedule),call('POST','/operations/schedule',schedule)]);
+  expect(scheduled.map(x=>x.statusCode).sort()).toEqual([201,409]);
+  expect(await db.technicianSchedule.count({where:{companyId,technicianId:technician.id}})).toBe(1);
+  expect((await call('GET','/operations/schedule',undefined,foreignToken)).json()).toEqual([]);
+  const technicianToken=app.jwt.sign({id:technician.id,companyId,role:'TECNICO',permissions:[]});
+  expect((await call('GET','/operations/schedule',undefined,technicianToken)).statusCode).toBe(200);
+  expect((await call('POST','/operations/schedule',schedule,technicianToken)).statusCode).toBe(403);
+  const startDate=new Date(Date.now()+5*86400000).toISOString();
+  const plan={customerId:customer.id,name:'Quarterly HVAC',frequency:'QUARTERLY',startDate,equipmentIds:[equipment.id]};
+  expect((await call('POST','/operations/maintenance-plans',{...plan,customerId:foreignCustomer.id})).statusCode).toBe(422);
+  expect((await call('POST','/operations/maintenance-plans',{...plan,equipmentIds:[foreignEquipment.id]})).statusCode).toBe(422);
+  expect((await call('POST','/operations/maintenance-plans',{...plan,equipmentIds:[equipment.id,equipment.id]})).statusCode).toBe(422);
+  expect((await call('POST','/operations/maintenance-plans',{...plan,frequency:'CUSTOM'})).statusCode).toBe(422);
+  const created=await call('POST','/operations/maintenance-plans',plan);expect(created.statusCode).toBe(201);
+  expect(created.json().occurrences).toHaveLength(2);
+  const due=await call('GET','/operations/maintenance-due');expect(due.statusCode).toBe(200);
+  expect(due.json().some((x:any)=>x.plan.id===created.json().id)).toBe(true);
+  expect((await call('GET','/operations/maintenance-plans',undefined,foreignToken)).json()).toEqual([]);
+  expect((await call('GET','/operations/maintenance-due',undefined,foreignToken)).json()).toEqual([]);
+  expect((await call('GET','/operations/maintenance-due',undefined,technicianToken)).statusCode).toBe(200);
+  expect((await call('POST','/operations/maintenance-plans',plan,technicianToken)).statusCode).toBe(403);
+ });
  afterAll(async()=>{await app?.close();await db?.$disconnect();if(privateRoot)await rm(privateRoot,{recursive:true,force:true})});
  it('logs in, registers hierarchy/equipment, converts a quote, executes and receives an OS',async()=>{
   const login=await call('POST','/auth/login',{email,password},'');expect(login.statusCode).toBe(200);token=login.json().accessToken;
