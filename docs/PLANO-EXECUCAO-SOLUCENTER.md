@@ -1,7 +1,7 @@
 # SOLUCENTER — Plano e acompanhamento de conclusão
 Data-base: 03/10/2026, America/Fortaleza.
 Repositório: solucentergestao-pb/Solucenter.
-Entrega atual integrada: https://github.com/solucentergestao-pb/Solucenter/pull/16 (merge c0bc34de01120303bc371bb717e99b85a598f923). Consolida o conteúdo preservado das PRs #9/#10; ainda não publicada.
+Entrega atual publicada: main no commit 60b6d3ad9df4cb119d63ee8e41ffef2a9132db7a em Web/API no Render. Entrega em validação: https://github.com/solucentergestao-pb/Solucenter/pull/24 (agenda/preventivas; CI aprovado, ainda não integrada nem publicada).
 
 ## O que o percentual significa
 Índice de cumprimento de marcos de entrega da V1, com pesos definidos hoje. Não é estimativa de horas, quantidade de código correta nem porcentagem de funcionalidades operacionais. A existência de código recebe crédito apenas no marco de estrutura disponível; não implica funcionamento. Não há percentual global histórico anterior confiável para comparação. A linha de base é conservadora e provisória: 40/100 pontos reconhecidos e 60/100 ainda não comprovados. Pode ser revisada para baixo se a auditoria invalidar marcos. Não converter ausência de evidência em confirmação de falha.
@@ -161,3 +161,18 @@ Próxima meta: fechar contas a pagar/fluxo de caixa/DRE com integração Postgre
 - Código salvo e integrado à main pela PR #16 (merge c0bc34de01120303bc371bb717e99b85a598f923); ainda não publicado. Nenhum registro real foi usado ou alterado.
 - Bloqueios de publicação: a sessão continua sem autenticação confirmada no Render, banco de homologação e storage persistente; por isso não foram atribuídos pontos de publicação, uploads privados em produção, backup ou isolamento real.
 - Próxima meta: cobrir o fluxo real de agenda/preventivas/notificações/portal. Quando houver acesso concreto ao ambiente, executar migrations controladas, smoke test e validação de storage/backup/HTTPS/logs.
+
+
+## 11/10/2026 — produção observável, agenda e preventivas isoladas
+Meta do ciclo: confirmar o estado real publicado sem alterar dados e fechar o fluxo de agenda/preventivas no PostgreSQL descartável.
+- Render acessível em leitura: Solucenter-web e Solucenter-api estão live, não suspensos, no commit 60b6d3ad9df4cb119d63ee8e41ffef2a9132db7a; deployments automáticos concluídos em 11/10/2026 às 01:08 (America/Fortaleza).
+- PostgreSQL Render 18 está disponível. Consulta somente leitura confirmou o conjunto controlado existente: 1 empresa, 1 cliente, 1 unidade, 1 ambiente, 1 equipamento e 1 OS. Logs de erro do Web/API retornaram vazios na janela consultada.
+- O fluxo Cliente → Unidade → Ambiente foi também exercitado na interface publicada durante a homologação controlada. Isso satisfaz os 2 pontos de publicação dessa frente. A presença de equipamento/OS no banco não foi convertida em crédito: QR/fotos e ciclo integral da OS ainda não foram homologados em produção.
+- Agenda agora rejeita técnico e OS de outra empresa; duas requisições simultâneas para o mesmo horário passam por transação serializável e somente uma é criada.
+- Planos preventivos validam cliente/equipamentos da empresa, rejeitam equipamentos repetidos e exigem intervalo quando a frequência é personalizada.
+- Leituras/escritas de agenda e preventivas passaram a exigir as permissões schedule.read/create e maintenance.read/create; técnico lê, mas não cria.
+- CI PostgreSQL 16/Node 22 aprovado em https://github.com/solucentergestao-pb/Solucenter/actions/runs/38137659849 (commit ef626fb7f0ab87dee209f12191ea8d4520a3571f): migrations, 66 testes, typecheck e builds API/web.
+- O cenário real cria agenda e plano, verifica duas ocorrências, lista preventiva próxima e cobre concorrência, período inválido, empresa estrangeira, técnico sem escrita, técnico/OS/equipamentos estrangeiros e frequência personalizada inválida.
+- Pontuação anterior/atual: 52/100 → 57/100, ganho +5 p.p.; faltam 43 pontos. São +3 pela integração real da frente agenda/preventivas e +2 pela publicação/validação real da frente clientes/unidades/ambientes.
+- Código salvo na PR #24; ainda não integrado à main nem publicado. Nenhum registro de produção foi criado, alterado ou removido nesta execução.
+- Próxima meta: integrar a PR #24, confirmar o deploy automático sem executar cadastros adicionais e fechar notificações/portal com integração PostgreSQL e isolamento. Persistem pendências de backup restaurado, storage privado real, HTTPS/secrets/logs auditados, isolamento completo em produção e aceite final.
