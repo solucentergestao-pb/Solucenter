@@ -14,9 +14,13 @@ const BASE=resolveApiBase();
 export async function api(path:string,options:RequestInit={}){
  const token=typeof window!=='undefined'?localStorage.getItem('token'):null;
  const isForm=typeof FormData!=='undefined'&&options.body instanceof FormData;
+ const headers=new Headers(options.headers);
+ // Fastify rejects an empty body advertised as JSON (e.g. PDF generation).
+ if(!isForm&&options.body!=null&&options.body!==''&&!headers.has('Content-Type'))headers.set('Content-Type','application/json');
+ if(token&&!headers.has('Authorization'))headers.set('Authorization',`Bearer ${token}`);
  let response:Response;
  try{
-  response=await fetch(BASE+path,{...options,headers:{...(!isForm?{'Content-Type':'application/json'}:{}),...(token?{Authorization:`Bearer ${token}`}:{}),...(options.headers??{})}});
+  response=await fetch(BASE+path,{...options,headers});
  }catch{
   throw new Error('Falha de conexão com a API. Verifique a configuração do servidor.');
  }
