@@ -22,7 +22,7 @@ async function main(){
  const adminEmail=email??'admin@solucenter.local';
  const adminPassword=password??'TroqueEstaSenha123!';
  await prisma.user.upsert({where:{companyId_email:{companyId:company.id,email:adminEmail}},update:{roleId:adminRole.id,status:'ACTIVE'},create:{companyId:company.id,roleId:adminRole.id,name:'Administrador SoluCenter',email:adminEmail,passwordHash:await bcrypt.hash(adminPassword,12)}});
- const defaultServiceTypes=['Manutenção preventiva','Manutenção corretiva','Instalação','Diagnóstico técnico'];
+ const defaultServiceTypes=["Visita técnica / Diagnóstico","Instalação","Desinstalação / Retirada","Reinstalação / Relocação","Start-up / Comissionamento","Manutenção preventiva","Manutenção corretiva","Higienização completa","PMOC - Elaboração / Implantação","PMOC - Manutenção periódica","Limpeza de evaporadora e filtros","Limpeza de condensadora","Limpeza / Desobstrução de dreno","Detecção e correção de vazamento","Teste de estanqueidade","Vácuo e desidratação do sistema","Carga / Complemento de fluido refrigerante","Recolhimento de fluido refrigerante","Reparo / Substituição de componente mecânico","Reparo / Substituição de componente elétrico ou eletrônico","Linha frigorígena / Tubulação / Isolamento","Automação / Controles / Sensores","Medição e avaliação de desempenho","Ventilação / Renovação de ar / Exaustão"];
  for(const name of defaultServiceTypes) await prisma.serviceType.upsert({where:{companyId_name:{companyId:company.id,name}},update:{active:true},create:{companyId:company.id,name,active:true}});
  console.log(`Seed concluído. Admin: ${adminEmail}.`)
 }
