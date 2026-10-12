@@ -176,3 +176,17 @@ Meta do ciclo: confirmar o estado real publicado sem alterar dados e fechar o fl
 - Pontuação anterior/atual: 52/100 → 57/100, ganho +5 p.p.; faltam 43 pontos. São +3 pela integração real da frente agenda/preventivas e +2 pela publicação/validação real da frente clientes/unidades/ambientes.
 - Código salvo e integrado à main pela PR #24 (merge cdda8aa65f9b167d912807049086de5a7aa470b8); deploy automático em verificação. Nenhum registro de produção foi criado, alterado ou removido nesta execução.
 - Próxima meta: confirmar o deploy automático sem executar cadastros adicionais e fechar notificações/portal com integração PostgreSQL e isolamento. Persistem pendências de backup restaurado, storage privado real, HTTPS/secrets/logs auditados, isolamento completo em produção e aceite final.
+
+## 12/10/2026 — portal e notificações isolados sob concorrência
+Meta do ciclo: impedir mistura entre empresas e efeitos duplicados nas decisões do portal e no processamento de notificações.
+- O login do portal deixa de selecionar arbitrariamente a primeira conta quando o mesmo e-mail existe em empresas diferentes: a senha identifica uma única conta; credenciais iguais em mais de uma empresa retornam conflito seguro.
+- Token interno não acessa rotas protegidas do portal. Solicitações validam conjuntamente empresa, cliente, unidade e equipamento; equipamento estrangeiro ou de outra unidade é bloqueado.
+- Aprovação/recusa de orçamento pelo portal usa reivindicação atômica: duas decisões simultâneas produzem uma decisão persistida e um conflito, sem sobrescrita.
+- Notificações separam leitura de gestão por permissão. Processamento manual fica limitado à empresa autenticada e a fila reivindica cada item atomicamente antes do envio, evitando entrega duplicada.
+- Parâmetros de evento/canal dos modelos são validados antes do acesso ao banco.
+- CI PostgreSQL 16/Node 22 aprovado em https://github.com/solucentergestao-pb/Solucenter/actions/runs/38241609067 (commit a431216f8c42b78260bf8c1481d17f037c3b49fd): migrations, typecheck, testes de integração com concorrência/isolamento e builds API/web.
+- Casos negativos comprovados: token interno no portal, senha errada, conta ambígua entre empresas, equipamento estrangeiro na solicitação, duas decisões simultâneas, gestor sem permissão de escrita, evento inválido, processamento concorrente e notificação estrangeira mantida pendente.
+- Pontuação anterior/atual: 57/100 → 63/100, ganho +6 p.p.; faltam 37 pontos. São +3 pelo fluxo real e casos negativos da frente portal e +3 pelo fluxo real e casos negativos da frente notificações. Build e quantidade de testes não foram contados novamente.
+- Código salvo na PR #26: https://github.com/solucentergestao-pb/Solucenter/pull/26. Mudança ainda não integrada nem publicada no momento deste registro; nenhum dado real foi alterado.
+- Render confirmado com disco persistente de 10 GB montado em `/var/data/solucenter` e serviços live no commit acc151d4ff7b9352c687e997a17464aba0b6cc3c. O erro de permissão observado ocorreu antes da montagem corrigida; a geração de PDF posterior continua sem evidência autenticada e não recebe crédito.
+- Próxima meta: integrar a PR após o CI, confirmar o deploy e executar smoke test autenticado de portal/notificações e PDF privado. Continuam pendentes backup restaurado, validação real do upload privado, HTTPS/secrets/logs, isolamento completo de clientes em produção e aceite final.
