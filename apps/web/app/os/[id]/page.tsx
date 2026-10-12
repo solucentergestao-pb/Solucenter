@@ -29,9 +29,23 @@ export default function OsDetail(){
   finally{setBusy(false)}
  }
  async function generatePdf(){
-  if(!id||pdfBusy)return;setPdfBusy(true);setError('');setMessage('');
-  try{const result:any=await api(`/documents/service-orders/${id}/pdf`,{method:'POST',body:'{}'});if(result?.shareUrl)window.open(result.shareUrl,'_blank','noopener,noreferrer');else setMessage('PDF gerado com sucesso.')}
-  catch(e:any){setError(e?.message??'Não foi possível gerar o PDF da OS.')}
+  if(!id||pdfBusy)return;
+  // Abra a aba ainda dentro do gesto do clique. Navegadores móveis podem
+  // bloquear window.open quando ele é chamado somente após um await.
+  const pdfWindow=window.open('about:blank','_blank');
+  if(pdfWindow)pdfWindow.opener=null;
+  setPdfBusy(true);setError('');setMessage('');
+  try{
+   const result:any=await api(`/documents/service-orders/${id}/pdf`,{method:'POST',body:'{}'});
+   if(result?.shareUrl){
+    if(pdfWindow)pdfWindow.location.href=result.shareUrl;
+    else window.location.href=result.shareUrl;
+   }else{
+    pdfWindow?.close();
+    setMessage('PDF gerado com sucesso.');
+   }
+  }
+  catch(e:any){pdfWindow?.close();setError(e?.message??'Não foi possível gerar o PDF da OS.')}
   finally{setPdfBusy(false)}
  }
  async function invoice(){
