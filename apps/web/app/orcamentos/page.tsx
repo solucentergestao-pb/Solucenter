@@ -15,8 +15,10 @@ export default function Orcamentos(){
   try{
    const result:any=await api(`/documents/quotes/${id}/pdf`,{method:'POST',body:'{}'});
    if(result?.shareUrl){
-    if(pdfWindow)pdfWindow.location.href=result.shareUrl;
-    else window.location.href=result.shareUrl;
+    const token=String(result.shareUrl).split('/').filter(Boolean).at(-1);
+    const safeUrl=token?`/backend/public/documents/${token}`:result.shareUrl;
+    if(pdfWindow)pdfWindow.location.href=safeUrl;
+    else window.location.href=safeUrl;
    }else{
     pdfWindow?.close();
     setMsg('PDF do orçamento gerado.');
