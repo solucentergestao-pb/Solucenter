@@ -8,9 +8,21 @@ export default function Orcamentos(){
  const load=async()=>{try{setQ(await api('/quotes'));setError('')}catch(e:any){setError(e?.message??'Não foi possível carregar os orçamentos.')}};
  useEffect(()=>{void load()},[]);
  async function pdf(id:string){
-  if(busy)return;setBusy(id+':pdf');setMsg('');setError('');
-  try{const result:any=await api(`/documents/quotes/${id}/pdf`,{method:'POST',body:'{}'});if(result?.shareUrl)window.open(result.shareUrl,'_blank','noopener,noreferrer');else setMsg('PDF do orçamento gerado.')}
-  catch(e:any){setError(e?.message??'Não foi possível gerar o PDF do orçamento.')}
+  if(busy)return;
+  const pdfWindow=window.open('about:blank','_blank');
+  if(pdfWindow)pdfWindow.opener=null;
+  setBusy(id+':pdf');setMsg('');setError('');
+  try{
+   const result:any=await api(`/documents/quotes/${id}/pdf`,{method:'POST',body:'{}'});
+   if(result?.shareUrl){
+    if(pdfWindow)pdfWindow.location.href=result.shareUrl;
+    else window.location.href=result.shareUrl;
+   }else{
+    pdfWindow?.close();
+    setMsg('PDF do orçamento gerado.');
+   }
+  }
+  catch(e:any){pdfWindow?.close();setError(e?.message??'Não foi possível gerar o PDF do orçamento.')}
   finally{setBusy('')}
  }
  async function act(id:string,a:string){
