@@ -17,6 +17,10 @@ export async function internalAccess(req:FastifyRequest,reply:FastifyReply){
   const permission=req.method==='GET'?'finance.read':'finance.write';
   if(!can(req.user,permission))return reply.code(403).send({error:{code:'FORBIDDEN',message:'Acesso não autorizado.'}});
  }
+ if(route.startsWith('/api/v1/notifications')){
+  const permission=req.method==='GET'?'notification.read':'notification.manage';
+  if(!can(req.user,permission))return reply.code(403).send({error:{code:'FORBIDDEN',message:'Acesso não autorizado.'}});
+ }
  if(route.startsWith('/api/v1/operations/')){
   let permission:string|undefined;
   if(route.includes('/company-settings'))permission='settings.manage';
