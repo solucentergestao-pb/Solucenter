@@ -18,7 +18,7 @@ describe.skipIf(!database)('PostgreSQL: operational cycle and tenant isolation',
  let db:typeof import('../src/lib/prisma.js').prisma;
  let token:string,foreignToken:string,companyId:string,userId:string,foreignCompanyId:string,privateRoot:string;
  const email=`test-${randomUUID()}@example.com`,password='Isolated-Test-Only-2026!';
- async function call(method:'GET'|'POST',path:string,payload?:object,access=token){
+ async function call(method:'GET'|'POST'|'PUT',path:string,payload?:object,access=token){
   return app.inject({method,url:'/api/v1'+path,payload,headers:access?{authorization:`Bearer ${access}`}:{}});
  }
  beforeAll(async()=>{
@@ -235,6 +235,50 @@ describe.skipIf(!database)('PostgreSQL: operational cycle and tenant isolation',
   expect((await call('GET','/operations/maintenance-due',undefined,technicianToken)).statusCode).toBe(200);
   expect((await call('POST','/operations/maintenance-plans',plan,technicianToken)).statusCode).toBe(403);
  });
+ it('isolates portal accounts, requests and concurrent quote decisions',async()=>{
+  const portalEmail=`portal-${randomUUID()}@example.com`,portalPassword='Portal-Test-Only-2026!',foreignPassword='Foreign-Portal-2026!';
+  const customer=await db.customer.create({data:{companyId,code:randomUUID(),name:'Portal Customer',type:'PJ'}});
+  const unit=await db.customerUnit.create({data:{customerId:customer.id,name:'Portal Unit'}});
+  const equipment=await db.equipment.create({data:{companyId,customerId:customer.id,unitId:unit.id,assetCode:randomUUID(),equipmentType:'SPLIT'}});
+  const foreignCustomer=await db.customer.create({data:{companyId:foreignCompanyId,code:randomUUID(),name:'Foreign Portal Customer',type:'PJ'}});
+  const foreignUnit=await db.customerUnit.create({data:{customerId:foreignCustomer.id,name:'Foreign Unit'}});
+  const foreignEquipment=await db.equipment.create({data:{companyId:foreignCompanyId,customerId:foreignCustomer.id,unitId:foreignUnit.id,assetCode:randomUUID(),equipmentType:'SPLIT'}});
+  const portalHash=await bcrypt.hash(portalPassword,4);
+  const portalUser=await db.customerPortalUser.create({data:{companyId,customerId:customer.id,name:'Portal User',email:portalEmail,passwordHash:portalHash}});
+  const foreignPortal=await db.customerPortalUser.create({data:{companyId:foreignCompanyId,customerId:foreignCustomer.id,name:'Foreign Portal User',email:portalEmail,passwordHash:await bcrypt.hash(foreignPassword,4)}});
+  const login=await call('POST','/portal/auth/login',{email:portalEmail,password:portalPassword},'');
+  expect(login.statusCode).toBe(200);const portalToken=login.json().accessToken;
+  expect((await call('GET','/portal/me',undefined,token)).statusCode).toBe(403);
+  expect((await call('POST','/portal/auth/login',{email:portalEmail,password:'Wrong-Password-2026!'},'')).statusCode).toBe(401);
+  const invalidRequest=await call('POST','/portal/requests',{unitId:unit.id,equipmentId:foreignEquipment.id,subject:'Falha no ar',description:'Equipamento sem refrigeração'},portalToken);
+  expect(invalidRequest.statusCode).toBe(403);
+  const validRequest=await call('POST','/portal/requests',{unitId:unit.id,equipmentId:equipment.id,subject:'Falha no ar',description:'Equipamento sem refrigeração'},portalToken);
+  expect(validRequest.statusCode).toBe(201);
+  const quote=await db.quote.create({data:{companyId,customerId:customer.id,unitId:unit.id,createdById:userId,quoteNumber:randomUUID(),status:'SENT',subtotal:100,total:100}});
+  const decisions=await Promise.all([
+   call('POST',`/portal/quotes/${quote.id}/decision`,{decision:'APPROVE'},portalToken),
+   call('POST',`/portal/quotes/${quote.id}/decision`,{decision:'DECLINE'},portalToken)
+  ]);
+  expect(decisions.map(x=>x.statusCode).sort()).toEqual([200,409]);
+  expect(await db.customerQuoteDecision.count({where:{quoteId:quote.id}})).toBe(1);
+  await db.customerPortalUser.update({where:{id:foreignPortal.id},data:{passwordHash:portalHash}});
+  expect((await call('POST','/portal/auth/login',{email:portalEmail,password:portalPassword},'')).statusCode).toBe(409);
+  expect(portalUser.companyId).toBe(companyId);
+ },30000);
+ it('scopes notification processing and atomically claims queue items',async()=>{
+  const own=await db.notification.create({data:{companyId,eventType:'PAYMENT_RECEIVED',channel:'IN_APP',recipient:'portal-user',body:'Pagamento recebido'}});
+  const foreign=await db.notification.create({data:{companyId:foreignCompanyId,eventType:'PAYMENT_RECEIVED',channel:'IN_APP',recipient:'foreign-user',body:'Pagamento recebido'}});
+  const gestor=app.jwt.sign({id:randomUUID(),companyId,role:'GESTOR',permissions:[]});
+  expect((await call('GET','/notifications/',undefined,gestor)).statusCode).toBe(200);
+  expect((await call('PUT','/notifications/templates/PAYMENT_RECEIVED/IN_APP',{name:'Teste',body:'Teste'},gestor)).statusCode).toBe(403);
+  expect((await call('POST','/notifications/process',{},gestor)).statusCode).toBe(403);
+  expect((await call('PUT','/notifications/templates/INVALID/IN_APP',{name:'Teste',body:'Teste'})).statusCode).toBe(422);
+  const runs=await Promise.all([call('POST','/notifications/process',{}),call('POST','/notifications/process',{})]);
+  expect(runs.every(x=>x.statusCode===200)).toBe(true);
+  expect((await db.notification.findUniqueOrThrow({where:{id:own.id}})).status).toBe('SENT');
+  expect(await db.notificationDelivery.count({where:{notificationId:own.id}})).toBe(1);
+  expect((await db.notification.findUniqueOrThrow({where:{id:foreign.id}})).status).toBe('PENDING');
+ },30000);
  afterAll(async()=>{await app?.close();await db?.$disconnect();if(privateRoot)await rm(privateRoot,{recursive:true,force:true})});
  it('logs in, registers hierarchy/equipment, converts a quote, executes and receives an OS',async()=>{
   const login=await call('POST','/auth/login',{email,password},'');expect(login.statusCode).toBe(200);token=login.json().accessToken;

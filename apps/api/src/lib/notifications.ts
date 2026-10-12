@@ -22,4 +22,26 @@ export async function emitNotificationEvent(c:Ctx){
 }
 async function sendWhatsApp(to:string,body:string){const token=process.env.WHATSAPP_ACCESS_TOKEN,phone=process.env.WHATSAPP_PHONE_NUMBER_ID;if(!token||!phone)throw new Error('WHATSAPP_NOT_CONFIGURED');const r=await fetch(`https://graph.facebook.com/${process.env.WHATSAPP_GRAPH_VERSION??'v23.0'}/${phone}/messages`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({messaging_product:'whatsapp',to,type:'text',text:{body}})});const j=await r.json();if(!r.ok)throw new Error(JSON.stringify(j));return j;}
 async function sendEmail(to:string,subject:string,body:string){const key=process.env.EMAIL_API_KEY,from=process.env.EMAIL_FROM;if(!key||!from)throw new Error('EMAIL_NOT_CONFIGURED');const endpoint=process.env.EMAIL_API_URL??'https://api.resend.com/emails';const r=await fetch(endpoint,{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify({from,to:[to],subject,text:body})});const j=await r.json();if(!r.ok)throw new Error(JSON.stringify(j));return j;}
-export async function processNotificationQueue(limit=25){const now=new Date();const rows=await prisma.notification.findMany({where:{status:'PENDING',scheduledAt:{lte:now},OR:[{nextAttemptAt:null},{nextAttemptAt:{lte:now}}]},orderBy:{createdAt:'asc'},take:limit});let sent=0,failed=0;for(const n of rows){const attempt=n.attempts+1;await prisma.notification.update({where:{id:n.id},data:{status:'PROCESSING',attempts:attempt}});try{const res=n.channel==='WHATSAPP'?await sendWhatsApp(n.recipient,n.body):n.channel==='EMAIL'?await sendEmail(n.recipient,n.subject??'Solucenter',n.body):{ok:true};const provider=n.channel==='WHATSAPP'?'META_WHATSAPP':n.channel==='EMAIL'?'EMAIL_HTTP':'IN_APP';await prisma.$transaction([prisma.notificationDelivery.create({data:{notificationId:n.id,attempt,provider,status:'SENT',responsePayload:res as any}}),prisma.notification.update({where:{id:n.id},data:{status:'SENT',sentAt:new Date(),provider,lastError:null}})]);sent++;}catch(e:any){const terminal=attempt>=n.maxAttempts;const next=new Date(Date.now()+Math.min(60,2**attempt)*60000);await prisma.$transaction([prisma.notificationDelivery.create({data:{notificationId:n.id,attempt,provider:n.channel,errorMessage:String(e.message),status:'FAILED'}}),prisma.notification.update({where:{id:n.id},data:{status:terminal?'FAILED':'PENDING',lastError:String(e.message),nextAttemptAt:terminal?null:next}})]);failed++;}}return {processed:rows.length,sent,failed};}
+export async function processNotificationQueue(limit=25,companyId?:string){
+ const now=new Date();
+ const rows=await prisma.notification.findMany({where:{...(companyId?{companyId}:{}),status:'PENDING',scheduledAt:{lte:now},OR:[{nextAttemptAt:null},{nextAttemptAt:{lte:now}}]},orderBy:{createdAt:'asc'},take:limit});
+ let processed=0,sent=0,failed=0;
+ for(const n of rows){
+  const claim=await prisma.notification.updateMany({where:{id:n.id,status:'PENDING',scheduledAt:{lte:now},OR:[{nextAttemptAt:null},{nextAttemptAt:{lte:now}}]},data:{status:'PROCESSING',attempts:{increment:1}}});
+  if(claim.count!==1)continue;
+  processed++;
+  const attempt=n.attempts+1;
+  try{
+   const res=n.channel==='WHATSAPP'?await sendWhatsApp(n.recipient,n.body):n.channel==='EMAIL'?await sendEmail(n.recipient,n.subject??'Solucenter',n.body):{ok:true};
+   const provider=n.channel==='WHATSAPP'?'META_WHATSAPP':n.channel==='EMAIL'?'EMAIL_HTTP':'IN_APP';
+   await prisma.$transaction([prisma.notificationDelivery.create({data:{notificationId:n.id,attempt,provider,status:'SENT',responsePayload:res as any}}),prisma.notification.update({where:{id:n.id},data:{status:'SENT',sentAt:new Date(),provider,lastError:null}})]);
+   sent++;
+  }catch(e:any){
+   const terminal=attempt>=n.maxAttempts;
+   const next=new Date(Date.now()+Math.min(60,2**attempt)*60000);
+   await prisma.$transaction([prisma.notificationDelivery.create({data:{notificationId:n.id,attempt,provider:n.channel,errorMessage:String(e.message),status:'FAILED'}}),prisma.notification.update({where:{id:n.id},data:{status:terminal?'FAILED':'PENDING',lastError:String(e.message),nextAttemptAt:terminal?null:next}})]);
+   failed++;
+  }
+ }
+ return {processed,sent,failed};
+}
