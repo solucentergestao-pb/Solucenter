@@ -279,6 +279,53 @@ describe.skipIf(!database)('PostgreSQL: operational cycle and tenant isolation',
   expect(await db.notificationDelivery.count({where:{notificationId:own.id}})).toBe(1);
   expect((await db.notification.findUniqueOrThrow({where:{id:foreign.id}})).status).toBe('PENDING');
  },30000);
+ it('starts maintenance atomically with stock, reminder, tenant and permission guards',async()=>{
+  const customer=await db.customer.create({data:{companyId,code:randomUUID(),name:'Maintenance Customer',type:'PJ'}});
+  const unit=await db.customerUnit.create({data:{customerId:customer.id,name:'Maintenance Unit'}});
+  const equipment=await db.equipment.create({data:{companyId,customerId:customer.id,unitId:unit.id,assetCode:randomUUID(),equipmentType:'SPLIT'}});
+  const foreignCustomer=await db.customer.create({data:{companyId:foreignCompanyId,code:randomUUID(),name:'Foreign Maintenance Customer',type:'PJ'}});
+  const foreignUnit=await db.customerUnit.create({data:{customerId:foreignCustomer.id,name:'Foreign Maintenance Unit'}});
+  const foreignEquipment=await db.equipment.create({data:{companyId:foreignCompanyId,customerId:foreignCustomer.id,unitId:foreignUnit.id,assetCode:randomUUID(),equipmentType:'SPLIT'}});
+  const serviceA=await db.serviceType.create({data:{companyId,name:`Cleaning ${randomUUID()}`,basePrice:100}});
+  const serviceB=await db.serviceType.create({data:{companyId,name:`Inspection ${randomUUID()}`,basePrice:200}});
+  const inactiveService=await db.serviceType.create({data:{companyId,name:`Inactive ${randomUUID()}`,basePrice:1,active:false}});
+  const foreignService=await db.serviceType.create({data:{companyId:foreignCompanyId,name:`Foreign ${randomUUID()}`,basePrice:1}});
+  const material=await db.material.create({data:{companyId,sku:randomUUID(),description:'Filter',unit:'UN',averageCost:10,salePrice:50,stockQuantity:3}});
+  const foreignMaterial=await db.material.create({data:{companyId:foreignCompanyId,sku:randomUUID(),description:'Foreign filter',unit:'UN',stockQuantity:2}});
+  const payload={equipmentId:equipment.id,serviceTypeIds:[serviceA.id,serviceB.id],materials:[{materialId:material.id,quantity:1}],discount:5,surcharge:10,reminderDays:90};
+  const before=await db.serviceOrder.count({where:{companyId}});
+  for(const invalid of [
+   {...payload,equipmentId:foreignEquipment.id},
+   {...payload,serviceTypeIds:[serviceA.id,foreignService.id]},
+   {...payload,serviceTypeIds:[inactiveService.id]},
+   {...payload,materials:[{materialId:foreignMaterial.id,quantity:1}]},
+   {...payload,serviceTypeIds:[serviceA.id,serviceA.id]},
+   {...payload,materials:[{materialId:material.id,quantity:1},{materialId:material.id,quantity:1}]}
+  ])expect((await call('POST','/service-orders/maintenance/start',invalid)).statusCode).toBe(422);
+  expect(await db.serviceOrder.count({where:{companyId}})).toBe(before);
+  const financeiro=app.jwt.sign({id:randomUUID(),companyId,role:'FINANCEIRO',permissions:[]});
+  expect((await call('POST','/service-orders/maintenance/start',payload,financeiro)).statusCode).toBe(403);
+  expect((await call('POST','/service-orders/',{customerId:customer.id,unitId:unit.id,equipmentId:equipment.id,reportedProblem:'Unauthorized'},financeiro)).statusCode).toBe(403);
+  const created=await call('POST','/service-orders/maintenance/start',payload);expect(created.statusCode).toBe(201);
+  const order=created.json().order;
+  expect(order.status).toBe('IN_PROGRESS');expect(Number(order.quotedValue)).toBe(355);
+  expect(Number((await db.material.findUniqueOrThrow({where:{id:material.id}})).stockQuantity)).toBe(2);
+  expect(await db.inventoryMovement.count({where:{serviceOrderId:order.id}})).toBe(1);
+  const plan=await db.maintenancePlan.findUniqueOrThrow({where:{id:created.json().reminderPlanId},include:{occurrences:true,equipment:true}});
+  expect(plan.occurrences).toHaveLength(2);expect(plan.equipment[0].equipmentId).toBe(equipment.id);
+  const scarce=await db.material.create({data:{companyId,sku:randomUUID(),description:'Scarce part',unit:'UN',averageCost:3,salePrice:9,stockQuantity:1}});
+  const racePayload={equipmentId:equipment.id,serviceTypeIds:[serviceA.id],materials:[{materialId:scarce.id,quantity:1}],discount:0,surcharge:0};
+  const raced=await Promise.all([call('POST','/service-orders/maintenance/start',racePayload),call('POST','/service-orders/maintenance/start',racePayload)]);
+  expect(raced.map(x=>x.statusCode).sort()).toEqual([201,409]);
+  expect(Number((await db.material.findUniqueOrThrow({where:{id:scarce.id}})).stockQuantity)).toBe(0);
+  expect(await db.inventoryMovement.count({where:{materialId:scarce.id}})).toBe(1);
+  const parallel=await Promise.all([
+   call('POST','/service-orders/maintenance/start',{equipmentId:equipment.id,serviceTypeIds:[serviceA.id],materials:[],discount:0,surcharge:0}),
+   call('POST','/service-orders/maintenance/start',{equipmentId:equipment.id,serviceTypeIds:[serviceA.id],materials:[],discount:0,surcharge:0})
+  ]);
+  expect(parallel.map(x=>x.statusCode)).toEqual([201,201]);
+  expect(new Set(parallel.map(x=>x.json().order.orderNumber)).size).toBe(2);
+ },30000);
  afterAll(async()=>{await app?.close();await db?.$disconnect();if(privateRoot)await rm(privateRoot,{recursive:true,force:true})});
  it('logs in, registers hierarchy/equipment, converts a quote, executes and receives an OS',async()=>{
   const login=await call('POST','/auth/login',{email,password},'');expect(login.statusCode).toBe(200);token=login.json().accessToken;
