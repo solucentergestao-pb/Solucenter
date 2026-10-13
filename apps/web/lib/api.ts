@@ -2,8 +2,6 @@ const DIRECT_API='https://solucenter-api-04bn.onrender.com/api/v1';
 
 function resolveApiBase(){
  const configured=(process.env.NEXT_PUBLIC_API_URL??'').trim().replace(/\/$/,'');
- // In production, keep browser requests same-origin. Next.js rewrites /backend/*
- // to the Render API server, eliminating browser CORS/network failures.
  if(process.env.NODE_ENV==='production') return '/backend/api/v1';
  if(!configured) return DIRECT_API;
  return configured.endsWith('/api/v1')?configured:`${configured}/api/v1`;
@@ -11,23 +9,44 @@ function resolveApiBase(){
 
 const BASE=resolveApiBase();
 
+async function doFetch(base:string,path:string,options:RequestInit,headers:Headers){
+ return fetch(base+path,{...options,headers});
+}
+
 export async function api(path:string,options:RequestInit={}){
  const token=typeof window!=='undefined'?localStorage.getItem('token'):null;
  const isForm=typeof FormData!=='undefined'&&options.body instanceof FormData;
  const headers=new Headers(options.headers);
- // Fastify rejects an empty body advertised as JSON (e.g. PDF generation).
  if(!isForm&&options.body!=null&&options.body!==''&&!headers.has('Content-Type'))headers.set('Content-Type','application/json');
  if(token&&!headers.has('Authorization'))headers.set('Authorization',`Bearer ${token}`);
+
  let response:Response;
  try{
-  response=await fetch(BASE+path,{...options,headers});
+  response=await doFetch(BASE,path,options,headers);
+  if(process.env.NODE_ENV==='production'&&BASE.startsWith('/')&&[502,503,504].includes(response.status)){
+   response=await doFetch(DIRECT_API,path,options,headers);
+  }
  }catch{
-  throw new Error('Falha de conexão com a API. Verifique a configuração do servidor.');
+  if(process.env.NODE_ENV==='production'&&BASE.startsWith('/')){
+   try{response=await doFetch(DIRECT_API,path,options,headers)}
+   catch{throw new Error('Falha de conexão com a API. Tente novamente em alguns segundos.')}
+  }else throw new Error('Falha de conexão com a API. Tente novamente em alguns segundos.');
  }
+
  const ct=response.headers.get('content-type')??'';
- const body=ct.includes('json')?await response.json().catch(()=>null):await response.blob();
- if(response.status===401&&typeof window!=='undefined'&&!path.startsWith('/auth/login')){localStorage.removeItem('token');window.location.href='/login?next='+encodeURIComponent(window.location.pathname+window.location.search);throw new Error('Sessão expirada.');}
- if(!response.ok)throw new Error((body as any)?.error?.message??'Erro na API');
+ let body:any=null;
+ if(ct.includes('json')) body=await response.json().catch(()=>null);
+ else body=await response.text().catch(()=>'');
+
+ if(response.status===401&&typeof window!=='undefined'&&!path.startsWith('/auth/login')){
+  localStorage.removeItem('token');
+  window.location.href='/login?next='+encodeURIComponent(window.location.pathname+window.location.search);
+  throw new Error('Sessão expirada.');
+ }
+ if(!response.ok){
+  const detail=body?.error?.message??body?.message;
+  throw new Error(detail??`Erro na API (${response.status})`);
+ }
  return body;
 }
 export const API_BASE=BASE;
