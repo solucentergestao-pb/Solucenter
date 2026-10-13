@@ -11,6 +11,8 @@ export default function Cliente() {
   const [c, setC] = useState<any>();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [customerForm, setCustomerForm] = useState<any>(null);
   const [u, setU] = useState({
     name: "",
     cep: "",
@@ -30,7 +32,9 @@ export default function Cliente() {
   const load = async () => {
     if (!id) return;
     try {
-      setC(await api("/customers/" + id));
+      const customer:any=await api("/customers/" + id);
+      setC(customer);
+      setCustomerForm({type:customer.type,name:customer.name,legalName:customer.legalName??"",tradeName:customer.tradeName??"",cpfCnpj:customer.cpfCnpj??"",phone:customer.phone??"",whatsapp:customer.whatsapp??"",email:customer.email??"",notes:customer.notes??""});
       setError("");
     } catch (err: any) {
       setError(err?.message ?? "Não foi possível carregar o cliente.");
@@ -40,6 +44,18 @@ export default function Cliente() {
   useEffect(() => {
     load();
   }, [id]);
+
+  async function saveCustomer(ev:any){
+    ev.preventDefault();
+    if(!id||busy||!customerForm)return;
+    setBusy(true);setError("");
+    try{
+      await api("/customers/"+id,{method:"PATCH",body:JSON.stringify(customerForm)});
+      setEditing(false);
+      await load();
+    }catch(err:any){setError(err?.message??"Não foi possível atualizar o cliente.")}
+    finally{setBusy(false)}
+  }
 
   async function addUnit(ev: any) {
     ev.preventDefault();
@@ -102,6 +118,27 @@ export default function Cliente() {
     <main>
       <h1>{c.name}</h1>
       {error && <p className="error" role="alert">{error}</p>}
+
+      <section className="card">
+        <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+          <div>
+            <h2 style={{marginBottom:4}}>Dados do cliente</h2>
+            <p className="muted" style={{margin:0}}>{c.phone||c.whatsapp||"Telefone não informado"} · {c.cpfCnpj||"CPF/CNPJ não informado"} · {c.equipment?.length??0} equipamento(s)</p>
+          </div>
+          <button type="button" onClick={()=>setEditing(v=>!v)}>{editing?"Cancelar":"Editar cliente"}</button>
+        </div>
+        {editing&&customerForm&&<form onSubmit={saveCustomer} className="grid" style={{marginTop:16}}>
+          <select value={customerForm.type} onChange={e=>setCustomerForm({...customerForm,type:e.target.value})}><option value="PJ">Pessoa jurídica</option><option value="PF">Pessoa física</option></select>
+          <input placeholder="Nome / razão social" required minLength={2} value={customerForm.name} onChange={e=>setCustomerForm({...customerForm,name:e.target.value})}/>
+          <input placeholder="Nome fantasia" value={customerForm.tradeName} onChange={e=>setCustomerForm({...customerForm,tradeName:e.target.value})}/>
+          <input placeholder={customerForm.type==="PJ"?"CNPJ":"CPF"} value={customerForm.cpfCnpj} onChange={e=>setCustomerForm({...customerForm,cpfCnpj:e.target.value})}/>
+          <input placeholder="Telefone" value={customerForm.phone} onChange={e=>setCustomerForm({...customerForm,phone:e.target.value})}/>
+          <input placeholder="WhatsApp" value={customerForm.whatsapp} onChange={e=>setCustomerForm({...customerForm,whatsapp:e.target.value})}/>
+          <input placeholder="E-mail" type="email" value={customerForm.email} onChange={e=>setCustomerForm({...customerForm,email:e.target.value})}/>
+          <textarea placeholder="Observações" value={customerForm.notes} onChange={e=>setCustomerForm({...customerForm,notes:e.target.value})}/>
+          <button disabled={busy}>{busy?"Salvando…":"Salvar alterações"}</button>
+        </form>}
+      </section>
 
       <section className="card">
         <h2>Nova unidade</h2>
