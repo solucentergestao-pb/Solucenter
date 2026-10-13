@@ -46,7 +46,7 @@ export async function serviceOrderRoutes(app:FastifyInstance){app.addHook('preHa
   if(p.data.reminderDays&&!can(u,'maintenance.create'))return fail(reply,403,'FORBIDDEN','Acesso não autorizado para criar lembrete preventivo.');
   try{
    const result=await prisma.$transaction(async tx=>{
-    await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${u.companyId}),hashtext('maintenance_start'))`);
+    await tx.$queryRaw(Prisma.sql`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${u.companyId}),hashtext('maintenance_start'))`);
     const equipment=await tx.equipment.findFirst({where:{id:p.data.equipmentId,companyId:u.companyId,status:{not:'REMOVED'}},include:{customer:true}});
     if(!equipment||!equipment.customer.active)throw new Error('INVALID_EQUIPMENT');
     const services=await tx.serviceType.findMany({where:{id:{in:p.data.serviceTypeIds},companyId:u.companyId,active:true}});
