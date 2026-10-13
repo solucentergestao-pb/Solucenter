@@ -27,7 +27,7 @@ export default function EquipmentQr() {
       <p>Tipo: {equipment.equipmentType}</p>
       <p>Capacidade: {equipment.capacityBtu ?? 'Não informada'} BTU/h</p>
       <p>Número de série: {equipment.serialNumber || 'Não informado'}</p>
-      <Link href={'/equipamentos/' + equipment.id}>Abrir ficha técnica e histórico</Link>
+      <div style={{display:'flex',gap:10,flexWrap:'wrap'}}><Link className="btn primary" href={'/manutencoes/iniciar?equipmentId=' + equipment.id}>Iniciar manutenção</Link><Link className="btn" href={'/equipamentos/' + equipment.id}>Abrir ficha técnica e histórico</Link></div>
     </section>}
   </main>;
 }
