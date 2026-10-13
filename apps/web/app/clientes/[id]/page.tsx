@@ -13,6 +13,10 @@ export default function Cliente() {
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
   const [customerForm, setCustomerForm] = useState<any>(null);
+  const [editingUnitId,setEditingUnitId]=useState("");
+  const [unitForm,setUnitForm]=useState<any>(null);
+  const [editingEnvId,setEditingEnvId]=useState("");
+  const [envForm,setEnvForm]=useState<any>(null);
   const [u, setU] = useState({
     name: "",
     cep: "",
@@ -54,6 +58,24 @@ export default function Cliente() {
       setEditing(false);
       await load();
     }catch(err:any){setError(err?.message??"Não foi possível atualizar o cliente.")}
+    finally{setBusy(false)}
+  }
+
+  async function saveUnit(ev:any){
+    ev.preventDefault();
+    if(!editingUnitId||!unitForm||busy)return;
+    setBusy(true);setError("");
+    try{await api("/units/"+editingUnitId,{method:"PATCH",body:JSON.stringify(unitForm)});setEditingUnitId("");setUnitForm(null);await load()}
+    catch(err:any){setError(err?.message??"Não foi possível atualizar a unidade.")}
+    finally{setBusy(false)}
+  }
+
+  async function saveEnvironment(ev:any){
+    ev.preventDefault();
+    if(!editingEnvId||!envForm||busy)return;
+    setBusy(true);setError("");
+    try{await api("/units/environments/"+editingEnvId,{method:"PATCH",body:JSON.stringify(envForm)});setEditingEnvId("");setEnvForm(null);await load()}
+    catch(err:any){setError(err?.message??"Não foi possível atualizar o ambiente.")}
     finally{setBusy(false)}
   }
 
@@ -208,18 +230,38 @@ export default function Cliente() {
 
       {c.units.map((x: any) => (
         <div className="card" key={x.id}>
-          <b>{x.name}</b>
-          <p>{[x.street, x.number, x.city, x.state].filter(Boolean).join(", ")}</p>
-
+          <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+            <div><b>{x.name}</b><p>{[x.street, x.number, x.city, x.state].filter(Boolean).join(", ")||"Endereço não informado"}</p></div>
+            <button type="button" onClick={()=>{setEditingUnitId(x.id);setUnitForm({name:x.name,cep:x.cep??"",street:x.street??"",number:x.number??"",complement:x.complement??"",neighborhood:x.neighborhood??"",city:x.city??"",state:x.state??"PB",reference:x.reference??""})}}>Editar unidade</button>
+          </div>
+          {editingUnitId===x.id&&unitForm&&<form onSubmit={saveUnit} className="grid" style={{marginBottom:16}}>
+            <input placeholder="Nome da unidade" value={unitForm.name} onChange={e=>setUnitForm({...unitForm,name:e.target.value})}/>
+            <input placeholder="CEP" value={unitForm.cep} onChange={e=>setUnitForm({...unitForm,cep:e.target.value})}/>
+            <input placeholder="Rua" value={unitForm.street} onChange={e=>setUnitForm({...unitForm,street:e.target.value})}/>
+            <input placeholder="Número" value={unitForm.number} onChange={e=>setUnitForm({...unitForm,number:e.target.value})}/>
+            <input placeholder="Complemento" value={unitForm.complement} onChange={e=>setUnitForm({...unitForm,complement:e.target.value})}/>
+            <input placeholder="Bairro" value={unitForm.neighborhood} onChange={e=>setUnitForm({...unitForm,neighborhood:e.target.value})}/>
+            <input placeholder="Cidade" value={unitForm.city} onChange={e=>setUnitForm({...unitForm,city:e.target.value})}/>
+            <input placeholder="UF" maxLength={2} value={unitForm.state} onChange={e=>setUnitForm({...unitForm,state:e.target.value.toUpperCase()})}/>
+            <button disabled={busy}>{busy?"Salvando…":"Salvar unidade"}</button>
+            <button type="button" onClick={()=>{setEditingUnitId("");setUnitForm(null)}}>Cancelar</button>
+          </form>}
+          <div style={{display:"grid",gap:8}}>
           {x.environments.map((a: any) => (
-            <a
-              className="pill"
-              key={a.id}
-              href={`/equipamentos/novo?customerId=${encodeURIComponent(id)}&unitId=${encodeURIComponent(x.id)}&environmentId=${encodeURIComponent(a.id)}`}
-            >
-              {a.name}
-            </a>
+            <div key={a.id} style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+              <a className="pill" href={`/equipamentos/novo?customerId=${encodeURIComponent(id)}&unitId=${encodeURIComponent(x.id)}&environmentId=${encodeURIComponent(a.id)}`}>{a.name}</a>
+              <button type="button" onClick={()=>{setEditingEnvId(a.id);setEnvForm({name:a.name,floor:a.floor??"",sector:a.sector??"",description:a.description??""})}}>Editar ambiente</button>
+              {editingEnvId===a.id&&envForm&&<form onSubmit={saveEnvironment} className="grid" style={{width:"100%"}}>
+                <input placeholder="Ambiente" value={envForm.name} onChange={e=>setEnvForm({...envForm,name:e.target.value})}/>
+                <input placeholder="Andar" value={envForm.floor} onChange={e=>setEnvForm({...envForm,floor:e.target.value})}/>
+                <input placeholder="Setor" value={envForm.sector} onChange={e=>setEnvForm({...envForm,sector:e.target.value})}/>
+                <input placeholder="Descrição" value={envForm.description} onChange={e=>setEnvForm({...envForm,description:e.target.value})}/>
+                <button disabled={busy}>{busy?"Salvando…":"Salvar ambiente"}</button>
+                <button type="button" onClick={()=>{setEditingEnvId("");setEnvForm(null)}}>Cancelar</button>
+              </form>}
+            </div>
           ))}
+          </div>
         </div>
       ))}
     </main>
