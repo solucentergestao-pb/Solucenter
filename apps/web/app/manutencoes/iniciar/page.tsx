@@ -117,7 +117,9 @@ export default function IniciarManutencao(){
    <h2>Resumo</h2>
    <p>Serviços: <b>{money(serviceTotal)}</b></p><p>Peças/materiais: <b>{money(materialTotal)}</b></p><p>Desconto: <b>- {money(discount)}</b> · Acréscimo: <b>+ {money(surcharge)}</b></p>
    <h3>Total previsto: {money(total)}</h3>
-   <button className="btn primary" disabled={busy||!equipmentId||!serviceIds.length} onClick={start}>{busy?'Iniciando…':'Iniciar atendimento'}</button>
+   {!equipmentId&&<p className="error">Selecione um equipamento antes de iniciar.</p>}
+   {!serviceIds.length&&<p className="error">Selecione pelo menos um serviço antes de iniciar.</p>}
+   <button className="btn primary" disabled={busy} onClick={start}>{busy?'Iniciando…':'Iniciar atendimento'}</button>
   </section>
  </AppShell>;
 }
