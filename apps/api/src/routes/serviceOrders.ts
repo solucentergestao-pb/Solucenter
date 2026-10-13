@@ -1,10 +1,34 @@
 import { FastifyInstance } from 'fastify'; import { z } from 'zod'; import { Prisma } from '@prisma/client'; import { prisma } from '../lib/prisma.js'; import { AuthUser } from '../lib/auth.js'; import { fail } from '../lib/errors.js'; import { can } from '../lib/security.js';
 const create=z.object({customerId:z.string().uuid(),unitId:z.string().uuid(),environmentId:z.string().uuid().optional(),equipmentId:z.string().uuid().optional(),serviceTypeId:z.string().uuid().optional(),priority:z.enum(['LOW','NORMAL','HIGH','URGENT']).default('NORMAL'),reportedProblem:z.string().min(3),scheduledAt:z.coerce.date().optional(),technicianIds:z.array(z.string().uuid()).default([])});
+const money=z.number().finite().nonnegative().max(9_999_999_999.99).refine(v=>new Prisma.Decimal(v).decimalPlaces()<=2,'Use no máximo duas casas decimais.');
+const materialQuantity=z.number().positive().max(999_999.999).refine(v=>new Prisma.Decimal(v).decimalPlaces()<=3,'Use no máximo três casas decimais.');
+const maintenanceStart=z.object({
+ equipmentId:z.string().uuid(),
+ serviceTypeIds:z.array(z.string().uuid()).min(1).max(20),
+ materials:z.array(z.object({materialId:z.string().uuid(),quantity:materialQuantity})).max(50).default([]),
+ observation:z.string().max(4000).optional(),
+ discount:money.default(0),
+ surcharge:money.default(0),
+ reminderDays:z.number().int().min(1).max(3650).optional()
+}).superRefine((v,ctx)=>{
+ if(new Set(v.serviceTypeIds).size!==v.serviceTypeIds.length)ctx.addIssue({code:'custom',path:['serviceTypeIds'],message:'Não repita serviços.'});
+ if(new Set(v.materials.map(x=>x.materialId)).size!==v.materials.length)ctx.addIssue({code:'custom',path:['materials'],message:'Não repita materiais.'});
+});
 export async function serviceOrderRoutes(app:FastifyInstance){app.addHook('preHandler',async(req,reply)=>{
   await req.jwtVerify();
   const u=req.user as AuthUser;
-  if(req.routeOptions.url?.endsWith('/invoice')&&!can(u,'finance.write'))return fail(reply,403,'FORBIDDEN','Acesso não autorizado.');
-  if(req.routeOptions.url?.endsWith('/profitability')&&!can(u,'profit.read'))return fail(reply,403,'FORBIDDEN','Acesso não autorizado.');
+  const route=req.routeOptions.url??'';
+  let permission:string|undefined;
+  if(route.endsWith('/invoice'))permission='finance.write';
+  else if(route.endsWith('/profitability'))permission='profit.read';
+  else if(req.method==='GET')permission='service_order.read';
+  else if(route.endsWith('/measurements'))permission='service_order.measurement.create';
+  else if(route.endsWith('/materials'))permission='service_order.material.create';
+  else if(route.endsWith('/complete'))permission='service_order.complete';
+  else if(route.endsWith('/maintenance/start'))permission='service_order.create';
+  else if(route.endsWith('/start')||route.endsWith('/preparation'))permission='service_order.update';
+  else if(req.method==='POST')permission='service_order.create';
+  if(permission&&!can(u,permission))return fail(reply,403,'FORBIDDEN','Acesso não autorizado.');
   const {id}=req.params as {id?:string};
   if(id){
    if(!z.string().uuid().safeParse(id).success)return fail(reply,404,'SERVICE_ORDER_NOT_FOUND','OS não encontrada.');
@@ -15,6 +39,62 @@ export async function serviceOrderRoutes(app:FastifyInstance){app.addHook('preHa
  app.get('/',async req=>{const u=req.user as AuthUser;return prisma.serviceOrder.findMany({where:{companyId:u.companyId},include:{customer:true,unit:true,equipment:true,technicians:{include:{user:true}}},orderBy:{createdAt:'desc'}})});
  app.get('/service-types',async req=>{const u=req.user as AuthUser;return prisma.serviceType.findMany({where:{companyId:u.companyId,active:true},orderBy:{name:'asc'}})});
  app.post('/service-types',async(req,reply)=>{const u=req.user as AuthUser,p=z.object({name:z.string().min(2).max(120),basePrice:z.number().nonnegative().default(0)}).safeParse(req.body);if(!p.success)return fail(reply,422,'VALIDATION_ERROR','Dados do serviço inválidos.',p.error.flatten());try{return reply.code(201).send(await prisma.serviceType.create({data:{companyId:u.companyId,name:p.data.name,basePrice:p.data.basePrice}}))}catch(e:any){if(e?.code==='P2002')return fail(reply,409,'SERVICE_TYPE_EXISTS','Já existe um serviço com este nome.');throw e}});
+ app.post('/maintenance/start',async(req,reply)=>{
+  const u=req.user as AuthUser,p=maintenanceStart.safeParse(req.body);
+  if(!p.success)return fail(reply,422,'VALIDATION_ERROR','Dados da manutenção inválidos.',p.error.flatten());
+  if(p.data.materials.length&&!can(u,'service_order.material.create'))return fail(reply,403,'FORBIDDEN','Acesso não autorizado para utilizar materiais.');
+  if(p.data.reminderDays&&!can(u,'maintenance.create'))return fail(reply,403,'FORBIDDEN','Acesso não autorizado para criar lembrete preventivo.');
+  try{
+   const result=await prisma.$transaction(async tx=>{
+    await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${u.companyId}),hashtext('maintenance_start'))`);
+    const equipment=await tx.equipment.findFirst({where:{id:p.data.equipmentId,companyId:u.companyId,status:{not:'REMOVED'}},include:{customer:true}});
+    if(!equipment||!equipment.customer.active)throw new Error('INVALID_EQUIPMENT');
+    const services=await tx.serviceType.findMany({where:{id:{in:p.data.serviceTypeIds},companyId:u.companyId,active:true}});
+    if(services.length!==p.data.serviceTypeIds.length)throw new Error('INVALID_SERVICE');
+    const materials=p.data.materials.length?await tx.material.findMany({where:{id:{in:p.data.materials.map(x=>x.materialId)},companyId:u.companyId,active:true}}):[];
+    if(materials.length!==p.data.materials.length)throw new Error('INVALID_MATERIAL');
+    const serviceTotal=services.reduce((sum,x)=>sum+Number(x.basePrice),0);
+    const materialTotal=p.data.materials.reduce((sum,row)=>sum+Number(materials.find(x=>x.id===row.materialId)!.salePrice)*row.quantity,0);
+    const quotedValue=Math.max(0,serviceTotal+materialTotal+p.data.surcharge-p.data.discount);
+    if(quotedValue>9_999_999_999.99)throw new Error('TOTAL_TOO_LARGE');
+    const count=await tx.serviceOrder.count({where:{companyId:u.companyId}});
+    const names=p.data.serviceTypeIds.map(id=>services.find(x=>x.id===id)!.name);
+    const order=await tx.serviceOrder.create({data:{
+     companyId:u.companyId,orderNumber:`OS-${String(count+1).padStart(6,'0')}`,customerId:equipment.customerId,unitId:equipment.unitId,
+     environmentId:equipment.environmentId,equipmentId:equipment.id,serviceTypeId:p.data.serviceTypeIds[0],priority:'NORMAL',status:'IN_PROGRESS',
+     reportedProblem:p.data.observation?.trim()||`Manutenção: ${names.join(', ')}`,performedService:names.join('; '),quotedValue,createdById:u.id,startedAt:new Date(),
+     statusHistory:{create:[{newStatus:'OPEN',userId:u.id},{previousStatus:'OPEN',newStatus:'IN_PROGRESS',userId:u.id}]}
+    }});
+    for(const row of p.data.materials){
+     const material=materials.find(x=>x.id===row.materialId)!;
+     const claimed=await tx.material.updateMany({where:{id:material.id,companyId:u.companyId,stockQuantity:{gte:row.quantity}},data:{stockQuantity:{decrement:row.quantity}}});
+     if(claimed.count!==1)throw new Error('INSUFFICIENT_STOCK');
+     await tx.serviceOrderMaterial.create({data:{serviceOrderId:order.id,materialId:material.id,quantity:row.quantity,unitCost:material.averageCost,unitPrice:material.salePrice}});
+     await tx.inventoryMovement.create({data:{materialId:material.id,movementType:'SERVICE_USAGE',quantity:-row.quantity,unitCost:material.averageCost,serviceOrderId:order.id,userId:u.id}});
+    }
+    let reminderPlanId:string|undefined;
+    if(p.data.reminderDays){
+     const first=new Date();first.setDate(first.getDate()+p.data.reminderDays);
+     const second=new Date(first);second.setDate(second.getDate()+p.data.reminderDays);
+     const plan=await tx.maintenancePlan.create({data:{companyId:u.companyId,customerId:equipment.customerId,name:`Retorno ${equipment.assetCode}`,frequency:'CUSTOM',intervalDays:p.data.reminderDays,startDate:first,notes:`Lembrete criado ao iniciar manutenção ${order.orderNumber}`,equipment:{create:{equipmentId:equipment.id}},occurrences:{create:[{dueAt:first},{dueAt:second}]}},select:{id:true}});
+     reminderPlanId=plan.id;
+    }
+    return {order,reminderPlanId};
+   });
+   return reply.code(201).send(result);
+  }catch(error:any){
+   const known:Record<string,[number,string,string]>={
+    INVALID_EQUIPMENT:[422,'INVALID_EQUIPMENT','Equipamento indisponível para esta empresa.'],
+    INVALID_SERVICE:[422,'INVALID_SERVICE','Um ou mais serviços estão indisponíveis.'],
+    INVALID_MATERIAL:[422,'INVALID_MATERIAL','Um ou mais materiais estão indisponíveis.'],
+    TOTAL_TOO_LARGE:[422,'TOTAL_TOO_LARGE','O valor total excede o limite permitido.'],
+    INSUFFICIENT_STOCK:[409,'INSUFFICIENT_STOCK','Estoque insuficiente.']
+   };
+   const item=known[error?.message];if(item)return fail(reply,item[0],item[1],item[2]);
+   if(error instanceof Prisma.PrismaClientKnownRequestError&&error.code==='P2002')return fail(reply,409,'ORDER_NUMBER_CONFLICT','Não foi possível reservar o número da OS.');
+   throw error;
+  }
+ });
  app.post('/',async(req,reply)=>{const u=req.user as AuthUser,p=create.safeParse(req.body);if(!p.success)return fail(reply,422,'VALIDATION_ERROR','Dados da OS inválidos.',p.error.flatten());const unit=await prisma.customerUnit.findFirst({where:{id:p.data.unitId,customerId:p.data.customerId,customer:{companyId:u.companyId,active:true}}});
  if(!unit)return fail(reply,422,'INVALID_RELATION','Unidade não pertence ao cliente.');
  if(p.data.environmentId){const env=await prisma.environment.findFirst({where:{id:p.data.environmentId,unitId:p.data.unitId}});if(!env)return fail(reply,422,'INVALID_RELATION','Ambiente não pertence à unidade.');}

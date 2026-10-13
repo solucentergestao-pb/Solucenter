@@ -45,31 +45,13 @@ export default function IniciarManutencao(){
   if(!serviceIds.length){setError('Selecione pelo menos um serviço.');return}
   setBusy(true);setError('');
   try{
-   const names=serviceIds.map(id=>services.find((s:any)=>s.id===id)?.name).filter(Boolean);
-   const os:any=await api('/service-orders',{method:'POST',body:JSON.stringify({
-    customerId:selectedEquipment.customerId??selectedEquipment.customer?.id,
-    unitId:selectedEquipment.unitId??selectedEquipment.unit?.id,
-    environmentId:selectedEquipment.environmentId??selectedEquipment.environment?.id??undefined,
-    equipmentId:selectedEquipment.id,
-    serviceTypeId:serviceIds[0],
-    priority:'NORMAL',
-    reportedProblem:observation.trim()||('Manutenção: '+names.join(', '))
+   const result:any=await api('/service-orders/maintenance/start',{method:'POST',body:JSON.stringify({
+    equipmentId:selectedEquipment.id,serviceTypeIds:serviceIds,
+    materials:materialRows.filter(r=>r.materialId&&Number(r.quantity)>0).map(r=>({materialId:r.materialId,quantity:Number(r.quantity)})),
+    observation:observation.trim()||undefined,discount:Number(discount||0),surcharge:Number(surcharge||0),
+    reminderDays:reminder?Number(reminderDays||90):undefined
    })});
-   await api('/service-orders/'+os.id+'/preparation',{method:'PATCH',body:JSON.stringify({performedService:names.join('; '),quotedValue:total,serviceTypeId:serviceIds[0]})});
-   for(const row of materialRows.filter(r=>r.materialId&&Number(r.quantity)>0)){
-    await api('/service-orders/'+os.id+'/materials',{method:'POST',body:JSON.stringify({materialId:row.materialId,quantity:Number(row.quantity)})});
-   }
-   await api('/service-orders/'+os.id+'/start',{method:'POST',body:'{}'});
-   if(reminder){
-    const date=new Date();date.setDate(date.getDate()+Number(reminderDays||90));
-    await api('/operations/maintenance-plans',{method:'POST',body:JSON.stringify({
-     customerId:selectedEquipment.customerId??selectedEquipment.customer?.id,
-     name:'Retorno '+(selectedEquipment.assetCode||'equipamento'),
-     frequency:'CUSTOM',intervalDays:Number(reminderDays||90),startDate:date.toISOString(),
-     equipmentIds:[selectedEquipment.id],notes:'Lembrete criado ao iniciar manutenção '+os.orderNumber
-    })});
-   }
-   location.href='/os/'+os.id+'/atendimento';
+   location.href='/os/'+result.order.id+'/atendimento';
   }catch(e:any){setError(e?.message??'Não foi possível iniciar a manutenção.');setBusy(false)}
  }
 
