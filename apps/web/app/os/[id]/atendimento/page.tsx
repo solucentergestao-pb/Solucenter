@@ -9,7 +9,7 @@ export default function AtendimentoOS(){
  const params=useParams<{id:string}>(),id=Array.isArray(params?.id)?params.id[0]:params?.id;
  const[os,setOs]=useState<any>(null),[materials,setMaterials]=useState<any[]>([]),[step,setStep]=useState(1),[error,setError]=useState(''),[busy,setBusy]=useState(false);
  const[f,setF]=useState<any>({measurements:{},materialId:'',materialQty:1,technicalDiagnosis:'',performedService:'',recommendations:'',finalValue:0,laborCost:0,travelCost:0,feesCost:0,otherCost:0});
- useEffect(()=>{if(!id)return;Promise.all([api('/service-orders'),api('/materials')]).then(([orders,m]:any)=>{const found=orders.find((x:any)=>x.id===id);if(!found)throw new Error('OS não encontrada.');setOs(found);setMaterials(m);setF((x:any)=>({...x,finalValue:Number(found.finalValue??found.quotedValue??0)}))}).catch((e:any)=>setError(e?.message??'Não foi possível carregar o atendimento.'))},[id]);
+ useEffect(()=>{if(!id)return;Promise.all([api('/service-orders'),api('/materials')]).then(([orders,m]:any)=>{const found=orders.find((x:any)=>x.id===id);if(!found)throw new Error('OS não encontrada.');setOs(found);setMaterials(m);setF((x:any)=>({...x,finalValue:Number(found.finalValue??found.quotedValue??0),performedService:found.performedService??''}))}).catch((e:any)=>setError(e?.message??'Não foi possível carregar o atendimento.'))},[id]);
  function set(k:string,v:any){setF((x:any)=>({...x,[k]:v}))}
  async function saveTech(){if(busy)return;setBusy(true);setError('');try{
   if(Object.values(f.measurements).some(v=>v!==''&&v!=null))await api(`/service-orders/${id}/measurements`,{method:'POST',body:JSON.stringify(Object.fromEntries(Object.entries(f.measurements).filter(([_,v])=>v!==''&&v!=null).map(([k,v])=>[k,Number(v)])))});
