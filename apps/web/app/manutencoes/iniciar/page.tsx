@@ -1,19 +1,17 @@
 'use client';
 import {useEffect,useMemo,useState} from 'react';
-import {useSearchParams} from 'next/navigation';
 import {AppShell} from '../../../components/AppShell';
 import {api} from '../../../lib/api';
 
 const money=(v:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);
 
 export default function IniciarManutencao(){
- const search=useSearchParams();
  const [customers,setCustomers]=useState<any[]>([]),[equipment,setEquipment]=useState<any[]>([]),[services,setServices]=useState<any[]>([]),[materials,setMaterials]=useState<any[]>([]);
- const [customerId,setCustomerId]=useState(''),[equipmentId,setEquipmentId]=useState(search.get('equipmentId')||''),[serviceIds,setServiceIds]=useState<string[]>([]),[materialRows,setMaterialRows]=useState<any[]>([]);
+ const [customerId,setCustomerId]=useState(''),[equipmentId,setEquipmentId]=useState(''),[serviceIds,setServiceIds]=useState<string[]>([]),[materialRows,setMaterialRows]=useState<any[]>([]);
  const [observation,setObservation]=useState(''),[discount,setDiscount]=useState(0),[surcharge,setSurcharge]=useState(0),[reminder,setReminder]=useState(false),[reminderDays,setReminderDays]=useState(90);
  const [error,setError]=useState(''),[busy,setBusy]=useState(false),[scanMessage,setScanMessage]=useState('');
 
- useEffect(()=>{Promise.all([api('/customers'),api('/equipment'),api('/service-orders/service-types'),api('/materials')]).then(([c,e,s,m]:any)=>{setCustomers(c);setEquipment(e);setServices(s);setMaterials(m);const preset=search.get('equipmentId');if(preset){const eq=e.find((x:any)=>x.id===preset);if(eq)setCustomerId(eq.customerId??eq.customer?.id??'')}}).catch((e:any)=>setError(e.message))},[]);
+ useEffect(()=>{const preset=new URLSearchParams(window.location.search).get('equipmentId')||'';if(preset)setEquipmentId(preset);Promise.all([api('/customers'),api('/equipment'),api('/service-orders/service-types'),api('/materials')]).then(([c,e,s,m]:any)=>{setCustomers(c);setEquipment(e);setServices(s);setMaterials(m);if(preset){const eq=e.find((x:any)=>x.id===preset);if(eq)setCustomerId(eq.customerId??eq.customer?.id??'')}}).catch((e:any)=>setError(e.message))},[]);
  const customerEquipment=useMemo(()=>equipment.filter((e:any)=>!customerId||(e.customerId??e.customer?.id)===customerId),[equipment,customerId]);
  const selectedEquipment=equipment.find((e:any)=>e.id===equipmentId);
  const serviceTotal=serviceIds.reduce((sum,id)=>sum+Number(services.find((s:any)=>s.id===id)?.basePrice??0),0);
