@@ -26,9 +26,9 @@ export default function Home(){
 
   <div className="sectionTitle"><div><h2>O que você precisa fazer?</h2><p className="muted">Acesso rápido às rotinas principais.</p></div></div>
   <div className="quick">
-   <Link href="/os/nova?fluxo=iniciar"><span>▣</span><strong>Iniciar manutenção</strong><small>Ler equipamento ou selecionar cadastro</small></Link>
+   <Link href="/manutencoes/iniciar"><span>▣</span><strong>Iniciar manutenção</strong><small>Ler equipamento ou selecionar cadastro</small></Link>
    <Link href="/documentos"><span>▤</span><strong>Relatórios em PDF</strong><small>Gerar e compartilhar relatórios técnicos</small></Link>
-   <Link href="/os/nova?fluxo=gerar"><span>＋</span><strong>Gerar manutenção</strong><small>Criar atendimento sem leitura de QR Code</small></Link>
+   <Link href="/manutencoes/iniciar?modo=manual"><span>＋</span><strong>Gerar manutenção</strong><small>Criar atendimento sem leitura de QR Code</small></Link>
    <Link href="/orcamentos/novo"><span>R$</span><strong>Orçamentos</strong><small>Serviços, materiais, desconto e valores</small></Link>
   </div>
 
