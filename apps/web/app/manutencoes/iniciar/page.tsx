@@ -59,13 +59,30 @@ export default function IniciarManutencao(){
   <section className="hero"><div><span className="eyebrow">OPERAÇÃO DE CAMPO</span><h1>Iniciar manutenção</h1><p>Identifique o equipamento, escolha serviços e peças e inicie o atendimento.</p></div></section>
   {error&&<p className="error" role="alert">{error}</p>}
   <div className="grid two">
-   <section className="card form">
+   <section className="card">
     <h2>1. Equipamento</h2>
-    <label>Cliente<select value={customerId} onChange={e=>{setCustomerId(e.target.value);setEquipmentId('')}}><option value="">Selecione</option>{customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
-    <label>Equipamento<select value={equipmentId} onChange={e=>chooseEquipment(e.target.value)}><option value="">Selecione</option>{customerEquipment.map((e:any)=><option key={e.id} value={e.id}>{e.assetCode} · {e.equipmentType} · {e.environment?.name??e.unit?.name??''}</option>)}</select></label>
-    <label className="btn">Ler QR Code<input style={{display:'none'}} type="file" accept="image/*" capture="environment" onChange={e=>{const f=e.target.files?.[0];if(f)void readQr(f)}}/></label>
+    <div className="field">
+     <label>Cliente</label>
+     <select value={customerId} onChange={e=>{setCustomerId(e.target.value);setEquipmentId('')}}>
+      <option value="">Selecione um cliente</option>
+      {customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+     </select>
+    </div>
+    <div className="field" style={{marginTop:14}}>
+     <label>Equipamento</label>
+     <select value={equipmentId} onChange={e=>chooseEquipment(e.target.value)}>
+      <option value="">Selecione um equipamento</option>
+      {customerEquipment.map((e:any)=><option key={e.id} value={e.id}>{e.assetCode} · {e.equipmentType} · {e.environment?.name??e.unit?.name??''}</option>)}
+     </select>
+    </div>
+    <div style={{marginTop:14}}>
+     <label className="btn primary" style={{cursor:'pointer'}}>Ler QR Code
+      <input style={{display:'none'}} type="file" accept="image/*" capture="environment" onChange={e=>{const f=e.target.files?.[0];if(f)void readQr(f)}}/>
+     </label>
+    </div>
+    {customers.length===0&&<p className="muted">Carregando clientes…</p>}
     {scanMessage&&<p className="muted">{scanMessage}</p>}
-    {selectedEquipment&&<div className="portal-item"><b>{selectedEquipment.assetCode}</b><span>{selectedEquipment.customer?.name} · {selectedEquipment.unit?.name} · {selectedEquipment.environment?.name??'Ambiente não informado'}</span></div>}
+    {selectedEquipment&&<div className="portal-item" style={{marginTop:14}}><b>{selectedEquipment.assetCode}</b><span>{selectedEquipment.customer?.name} · {selectedEquipment.unit?.name} · {selectedEquipment.environment?.name??'Ambiente não informado'}</span></div>}
    </section>
 
    <section className="card">
