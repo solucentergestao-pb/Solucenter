@@ -279,6 +279,34 @@ describe.skipIf(!database)('PostgreSQL: operational cycle and tenant isolation',
   expect(await db.notificationDelivery.count({where:{notificationId:own.id}})).toBe(1);
   expect((await db.notification.findUniqueOrThrow({where:{id:foreign.id}})).status).toBe('PENDING');
  },30000);
+ it('consumes the last part once across concurrent OS and blocks closed orders',async()=>{
+  const first=await fixture(),second=await fixture();
+  await db.serviceOrder.updateMany({where:{id:{in:[first.os.id,second.os.id]}},data:{status:'IN_PROGRESS'}});
+  const material=await db.material.create({data:{companyId,sku:randomUUID(),description:'Last part',unit:'UN',stockQuantity:1,averageCost:3,salePrice:10}});
+  const payload={materialId:material.id,quantity:1};
+  const results=await Promise.all([call('POST',`/service-orders/${first.os.id}/materials`,payload),call('POST',`/service-orders/${second.os.id}/materials`,payload)]);
+  expect(results.map(x=>x.statusCode).sort()).toEqual([201,409]);
+  expect(Number((await db.material.findUniqueOrThrow({where:{id:material.id}})).stockQuantity)).toBe(0);
+  expect(await db.serviceOrderMaterial.count({where:{materialId:material.id}})).toBe(1);
+  expect(await db.inventoryMovement.count({where:{materialId:material.id}})).toBe(1);
+  await db.material.update({where:{id:material.id},data:{stockQuantity:2}});
+  for(const status of ['COMPLETED','INVOICED','RECEIVED','CANCELLED'] as const){
+   await db.serviceOrder.update({where:{id:first.os.id},data:{status}});
+   const response=await call('POST',`/service-orders/${first.os.id}/materials`,payload);
+   expect(response.statusCode).toBe(409);expect(response.json().error.code).toBe('SERVICE_ORDER_LOCKED');
+  }
+  expect(Number((await db.material.findUniqueOrThrow({where:{id:material.id}})).stockQuantity)).toBe(2);
+  expect((await call('POST',`/service-orders/${second.os.id}/materials`,{...payload,quantity:0.0001})).statusCode).toBe(422);
+  await db.material.update({where:{id:material.id},data:{active:false}});
+  expect((await call('POST',`/service-orders/${second.os.id}/materials`,payload)).statusCode).toBe(404);
+  await db.material.update({where:{id:material.id},data:{active:true}});
+  expect((await call('POST',`/service-orders/${second.os.id}/materials`,payload,foreignToken)).statusCode).toBe(404);
+  const foreignMaterial=await db.material.create({data:{companyId:foreignCompanyId,sku:randomUUID(),description:'Foreign part',unit:'UN',stockQuantity:2}});
+  expect((await call('POST',`/service-orders/${second.os.id}/materials`,{materialId:foreignMaterial.id,quantity:1})).statusCode).toBe(404);
+  expect(Number((await db.material.findUniqueOrThrow({where:{id:foreignMaterial.id}})).stockQuantity)).toBe(2);
+  expect(await db.serviceOrderMaterial.count({where:{materialId:material.id}})).toBe(1);
+  expect(await db.inventoryMovement.count({where:{materialId:material.id}})).toBe(1);
+ },30000);
  it('starts maintenance atomically with stock, reminder, tenant and permission guards',async()=>{
   const customer=await db.customer.create({data:{companyId,code:randomUUID(),name:'Maintenance Customer',type:'PJ'}});
   const unit=await db.customerUnit.create({data:{customerId:customer.id,name:'Maintenance Unit'}});
