@@ -4,7 +4,7 @@ import {beforeEach, describe, expect, it, vi} from 'vitest';
 
 const db=vi.hoisted(()=>({
  serviceOrder:{findFirst:vi.fn(),count:vi.fn(),create:vi.fn()},
- customer:{findFirst:vi.fn()},customerUnit:{findFirst:vi.fn(),findMany:vi.fn()},
+ customer:{findFirst:vi.fn()},customerUnit:{findFirst:vi.fn(),findMany:vi.fn(),update:vi.fn()},
  environment:{findFirst:vi.fn()},equipment:{findFirst:vi.fn()},
  serviceType:{findFirst:vi.fn()},user:{count:vi.fn()},
  serviceMeasurement:{create:vi.fn()},servicePhoto:{create:vi.fn()},
@@ -19,7 +19,7 @@ const id='11111111-1111-4111-8111-111111111111';
 const other='22222222-2222-4222-8222-222222222222';
 const company='33333333-3333-4333-8333-333333333333';
 const principal={id,companyId:company,role:'ADMIN',permissions:[]};
-async function request(route:'orders'|'units'|'quotes',method:'GET'|'POST',url:string,payload?:object,role='ADMIN'){
+async function request(route:'orders'|'units'|'quotes',method:'GET'|'POST'|'PATCH',url:string,payload?:object,role='ADMIN'){
  const app=Fastify();app.register(jwt,{secret:'isolated-test-secret'});
  app.register(route==='orders'?serviceOrderRoutes:route==='units'?unitRoutes:quoteRoutes);
  await app.ready();
@@ -105,3 +105,15 @@ describe('Quote conversion: relations and duplicate conversion',()=>{
   expect(db.quote.updateMany.mock.invocationCallOrder[0]).toBeLessThan(db.serviceOrder.create.mock.invocationCallOrder[0]);
  });
 });
+
+ describe('Unit editing: optional state',()=>{
+  it.each(['','  '])('clears blank state %j without rejecting the unit',async state=>{
+   db.customerUnit.findFirst.mockResolvedValue({id});db.customerUnit.update.mockImplementation(async x=>x.data);
+   const r=await request('units','PATCH',`/${id}`,{name:'Unidade Teste',state});
+   expect(r.statusCode).toBe(200);expect(r.json().state).toBeNull();
+  });
+  it('rejects a malformed state before writing',async()=>{
+   expect((await request('units','PATCH',`/${id}`,{state:'PARAIBA'})).statusCode).toBe(422);
+   expect(db.customerUnit.update).not.toHaveBeenCalled();
+  });
+ });
