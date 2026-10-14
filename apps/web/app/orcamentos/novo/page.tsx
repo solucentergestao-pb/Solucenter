@@ -1,27 +1,28 @@
 'use client';
-import {useEffect,useMemo,useState} from 'react';
+import {useEffect,useMemo,useRef,useState} from 'react';
 import {api} from '../../../lib/api';
 
 const isoDate=(d:Date)=>d.toISOString().slice(0,10);
 export default function NovoOrcamento(){
+ const saving=useRef(false);
  const [customers,setCustomers]=useState<any[]>([]),[customerId,setCustomerId]=useState(''),[units,setUnits]=useState<any[]>([]),[unitId,setUnitId]=useState('');
  const [discount,setDiscount]=useState(0),[validUntil,setValidUntil]=useState(()=>{const d=new Date();d.setDate(d.getDate()+30);return isoDate(d)});
  const [paymentTerms,setPaymentTerms]=useState('Dinheiro, PIX ou cartão de crédito com acréscimo de 10%.'),[warrantyTerms,setWarrantyTerms]=useState('Garantia do serviço: 90 dias.'),[notes,setNotes]=useState('');
  const [items,setItems]=useState<any[]>([{itemType:'SERVICE',description:'',quantity:1,unitPrice:0,unitCost:0}]),[msg,setMsg]=useState(''),[busy,setBusy]=useState(false);
  useEffect(()=>{api('/customers').then(setCustomers)},[]);
- useEffect(()=>{if(customerId)api(`/units/customer/${customerId}`).then(setUnits).catch(()=>setUnits([]));else setUnits([])},[customerId]);
+ useEffect(()=>{let current=true;setUnits([]);if(customerId)api(`/units/customer/${customerId}`).then(rows=>{if(current)setUnits(rows)}).catch(()=>{if(current)setUnits([])});return()=>{current=false}},[customerId]);
  const t=useMemo(()=>{const subtotal=items.reduce((s,i)=>s+i.quantity*i.unitPrice,0),cost=items.reduce((s,i)=>s+i.quantity*i.unitCost,0),total=Math.max(0,subtotal-discount),profit=total-cost;return {subtotal,cost,total,profit,margin:total?profit/total*100:0}},[items,discount]);
  function patch(i:number,k:string,v:any){setItems(a=>a.map((x,n)=>n===i?{...x,[k]:v}:x))}
  async function save(){
-  if(busy)return;setBusy(true);setMsg('');
+  if(saving.current)return;saving.current=true;setBusy(true);setMsg('');
   try{
    const q:any=await api('/quotes',{method:'POST',body:JSON.stringify({customerId,unitId:unitId||undefined,discount,validUntil,paymentTerms,warrantyTerms,notes:notes||undefined,items})});
-   setMsg(`Orçamento ${q.quoteNumber} criado com sucesso.`);
-  }catch(e:any){setMsg(e.message)}finally{setBusy(false)}
+   setMsg(`Orçamento ${q.quoteNumber} criado com sucesso.`);window.location.href='/orcamentos';
+  }catch(e:any){setMsg(e.message);saving.current=false;setBusy(false)}
  }
  return <main className="shell"><h1>Novo orçamento</h1>
   <div className="card form">
-   <label>Cliente<select value={customerId} onChange={e=>setCustomerId(e.target.value)}><option value="">Selecione</option>{customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+   <label>Cliente<select value={customerId} onChange={e=>{setCustomerId(e.target.value);setUnitId('');setUnits([])}}><option value="">Selecione</option>{customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
    <label>Unidade<select value={unitId} onChange={e=>setUnitId(e.target.value)}><option value="">Selecione</option>{units.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select></label>
    <label>Validade do orçamento<input type="date" value={validUntil} onChange={e=>setValidUntil(e.target.value)}/></label>
   </div>

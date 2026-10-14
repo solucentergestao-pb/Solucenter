@@ -20,22 +20,24 @@ export async function api(path:string,options:RequestInit={}){
  if(!isForm&&options.body!=null&&options.body!==''&&!headers.has('Content-Type'))headers.set('Content-Type','application/json');
  if(token&&!headers.has('Authorization'))headers.set('Authorization',`Bearer ${token}`);
 
+ const canRetry=['GET','HEAD'].includes((options.method??'GET').toUpperCase());
  let response:Response;
  try{
   response=await doFetch(BASE,path,options,headers);
-  if(process.env.NODE_ENV==='production'&&BASE.startsWith('/')&&[502,503,504].includes(response.status)){
+  if(canRetry&&process.env.NODE_ENV==='production'&&BASE.startsWith('/')&&[502,503,504].includes(response.status)){
    response=await doFetch(DIRECT_API,path,options,headers);
   }
  }catch{
-  if(process.env.NODE_ENV==='production'&&BASE.startsWith('/')){
+  if(canRetry&&process.env.NODE_ENV==='production'&&BASE.startsWith('/')){
    try{response=await doFetch(DIRECT_API,path,options,headers)}
    catch{throw new Error('Falha de conexão com a API. Tente novamente em alguns segundos.')}
-  }else throw new Error('Falha de conexão com a API. Tente novamente em alguns segundos.');
+  }else throw new Error(canRetry?'Falha de conexão com a API. Tente novamente em alguns segundos.':'A conexão foi interrompida. Confira se a operação foi registrada antes de tentar novamente.');
  }
 
  const ct=response.headers.get('content-type')??'';
  let body:any=null;
  if(ct.includes('json')) body=await response.json().catch(()=>null);
+ else if(response.ok&&(ct.includes('image/')||ct.includes('application/pdf')||ct.includes('application/octet-stream')))body=await response.blob();
  else body=await response.text().catch(()=>'');
 
  if(response.status===401&&typeof window!=='undefined'&&!path.startsWith('/auth/login')){

@@ -37,3 +37,38 @@ describe('Browser API requests accepted by Fastify',()=>{
   expect(new Headers(options.headers).has('content-type')).toBe(false);
  });
 });
+
+describe('Binary downloads and safe connection fallback',()=>{
+ afterEach(()=>{vi.unstubAllEnvs();vi.resetModules()});
+ it.each(['image/png','application/pdf'])('preserves bytes for %s downloads',async contentType=>{
+  const bytes=new Uint8Array([0,137,80,68,70,255]);
+  vi.stubGlobal('fetch',vi.fn(async()=>new Response(bytes,{headers:{'content-type':contentType}})));
+  const result=await api('/equipment/test/label');
+  expect(result).toBeInstanceOf(Blob);
+  expect(new Uint8Array(await result.arrayBuffer())).toEqual(bytes);
+ });
+ it.each(['POST','PATCH','DELETE'])('does not repeat %s after a connection failure',async method=>{
+  vi.stubEnv('NODE_ENV','production');vi.resetModules();
+  const {api:productionApi}=await import('../../web/lib/api');
+  const fetchMock=vi.fn().mockRejectedValueOnce(new Error('response lost')).mockResolvedValue(new Response('{}'));
+  vi.stubGlobal('fetch',fetchMock);
+  await expect(productionApi('/service-orders',{method})).rejects.toThrow('Confira se a operação foi registrada');
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+ });
+ it('does not repeat a mutation after a gateway timeout',async()=>{
+  vi.stubEnv('NODE_ENV','production');vi.resetModules();
+  const {api:productionApi}=await import('../../web/lib/api');
+  const fetchMock=vi.fn().mockResolvedValue(new Response('Gateway Timeout',{status:504}));
+  vi.stubGlobal('fetch',fetchMock);
+  await expect(productionApi('/quotes',{method:'POST'})).rejects.toThrow('504');
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+ });
+ it('still retries read-only requests through the direct connection',async()=>{
+  vi.stubEnv('NODE_ENV','production');vi.resetModules();
+  const {api:productionApi}=await import('../../web/lib/api');
+  const fetchMock=vi.fn().mockRejectedValueOnce(new Error('proxy unavailable')).mockResolvedValueOnce(new Response('[]',{headers:{'content-type':'application/json'}}));
+  vi.stubGlobal('fetch',fetchMock);
+  expect(await productionApi('/quotes')).toEqual([]);
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+ });
+});

@@ -12,8 +12,8 @@ export default function AtendimentoOS(){
  useEffect(()=>{if(!id)return;Promise.all([api('/service-orders'),api('/materials')]).then(([orders,m]:any)=>{const found=orders.find((x:any)=>x.id===id);if(!found)throw new Error('OS não encontrada.');setOs(found);setMaterials(m);setF((x:any)=>({...x,finalValue:Number(found.finalValue??found.quotedValue??0),performedService:found.performedService??''}))}).catch((e:any)=>setError(e?.message??'Não foi possível carregar o atendimento.'))},[id]);
  function set(k:string,v:any){setF((x:any)=>({...x,[k]:v}))}
  async function saveTech(){if(busy)return;setBusy(true);setError('');try{
-  if(Object.values(f.measurements).some(v=>v!==''&&v!=null))await api(`/service-orders/${id}/measurements`,{method:'POST',body:JSON.stringify(Object.fromEntries(Object.entries(f.measurements).filter(([_,v])=>v!==''&&v!=null).map(([k,v])=>[k,Number(v)])))});
-  if(f.materialId)await api(`/service-orders/${id}/materials`,{method:'POST',body:JSON.stringify({materialId:f.materialId,quantity:Number(f.materialQty)})});
+  if(Object.values(f.measurements).some(v=>v!==''&&v!=null)){await api(`/service-orders/${id}/measurements`,{method:'POST',body:JSON.stringify(Object.fromEntries(Object.entries(f.measurements).filter(([_,v])=>v!==''&&v!=null).map(([k,v])=>[k,Number(v)])))});setF((x:any)=>({...x,measurements:{}}));}
+  if(f.materialId){await api(`/service-orders/${id}/materials`,{method:'POST',body:JSON.stringify({materialId:f.materialId,quantity:Number(f.materialQty)})});setF((x:any)=>({...x,materialId:'',materialQty:1}));}
   setStep(2);
  }catch(e:any){setError(e?.message??'Não foi possível salvar o atendimento.')}finally{setBusy(false)}}
  async function complete(){if(busy)return;setBusy(true);setError('');try{
