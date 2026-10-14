@@ -1,9 +1,11 @@
 'use client';
 import Link from 'next/link';
 import {useEffect,useState} from 'react';
+import {useRouter} from 'next/navigation';
 import {api} from '../../lib/api';
 
 export default function Orcamentos(){
+ const router=useRouter();
  const[q,setQ]=useState<any[]>([]),[msg,setMsg]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState('');
  const load=async()=>{try{setQ(await api('/quotes'));setError('')}catch(e:any){setError(e?.message??'Não foi possível carregar os orçamentos.')}};
  useEffect(()=>{void load()},[]);
@@ -31,8 +33,9 @@ export default function Orcamentos(){
   if(busy)return;
   setBusy(id+':'+a);setMsg('');setError('');
   try{
-   await api(`/quotes/${id}/${a}`,{method:'POST',body:a==='convert-to-service-order'?JSON.stringify({reportedProblem:'Serviço conforme orçamento aprovado'}):'{}'});
+   const result:any=await api(`/quotes/${id}/${a}`,{method:'POST',body:a==='convert-to-service-order'?JSON.stringify({reportedProblem:'Serviço conforme orçamento aprovado'}):'{}'});
    setMsg(a==='send'?'Orçamento enviado.':a==='approve'?'Orçamento aprovado.':'Orçamento convertido em OS.');
+   if(a==='convert-to-service-order'&&result?.id){router.push(`/os/${result.id}`);return}
    await load();
   }catch(e:any){setError(e?.message??'Não foi possível concluir esta ação.')}
   finally{setBusy('')}

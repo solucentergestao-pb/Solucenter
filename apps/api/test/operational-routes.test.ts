@@ -3,11 +3,11 @@ import jwt from '@fastify/jwt';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 
 const db=vi.hoisted(()=>({
- serviceOrder:{findFirst:vi.fn(),count:vi.fn(),create:vi.fn(),updateMany:vi.fn()},
+ serviceOrder:{findFirst:vi.fn(),count:vi.fn(),create:vi.fn(),updateMany:vi.fn(),update:vi.fn()},
  customer:{findFirst:vi.fn()},customerUnit:{findFirst:vi.fn(),findMany:vi.fn(),update:vi.fn()},
  environment:{findFirst:vi.fn()},equipment:{findFirst:vi.fn()},
  serviceType:{findFirst:vi.fn()},user:{count:vi.fn()},
- serviceMeasurement:{create:vi.fn()},servicePhoto:{create:vi.fn()},
+ accountReceivable:{findFirst:vi.fn(),create:vi.fn()},serviceMeasurement:{create:vi.fn()},servicePhoto:{create:vi.fn()},
  quote:{findFirst:vi.fn(),updateMany:vi.fn()},$transaction:vi.fn(),
 }));
 vi.mock('../src/lib/prisma.js',()=>({prisma:db}));
@@ -52,6 +52,22 @@ describe('OS: HTTP routes and tenant guards (database mocked)',()=>{
   const r=await request('orders','POST',`/${id}/measurements`,{voltage:220});
   expect(r.statusCode).toBe(409);expect(db.serviceMeasurement.create).not.toHaveBeenCalled();
   expect(db.serviceOrder.updateMany).toHaveBeenCalledWith({where:{id,companyId:company,status:{in:['OPEN','SCHEDULED','ASSIGNED','ON_THE_WAY','IN_PROGRESS','WAITING_APPROVAL','WAITING_PARTS']}},data:{updatedAt:expect.any(Date)}});
+ });
+ it('rejects financial edits when an invoice wins after the initial read',async()=>{
+  db.serviceOrder.findFirst.mockResolvedValue({id,status:'COMPLETED'});db.serviceOrder.updateMany.mockResolvedValue({count:0});
+  const r=await request('orders','PATCH',`/${id}/financials`,{finalValue:200});
+  expect(r.statusCode).toBe(409);expect(r.json().error.code).toBe('SERVICE_ORDER_LOCKED');
+  expect(db.serviceOrder.updateMany).toHaveBeenCalledWith({where:{id,companyId:company,status:'COMPLETED'},data:expect.objectContaining({finalValue:200})});
+ });
+ it('invoices the latest value after acquiring the order lock',async()=>{
+  db.serviceOrder.findFirst.mockResolvedValueOnce({id,status:'COMPLETED'})
+   .mockResolvedValueOnce({id,status:'COMPLETED',finalValue:100})
+   .mockResolvedValueOnce({id,status:'INVOICED',finalValue:200});
+  db.serviceOrder.updateMany.mockResolvedValue({count:1});
+  db.serviceOrder.update.mockResolvedValue({id,status:'INVOICED'});
+  db.accountReceivable.findFirst.mockResolvedValue(null);db.accountReceivable.create.mockImplementation(async x=>x.data);
+  const r=await request('orders','POST',`/${id}/invoice`,{dueDate:'2026-10-15'});
+  expect(r.statusCode).toBe(200);expect(r.json().originalAmount).toBe(200);
  });
  it('rejects technician access to profit',async()=>{
   expect((await request('orders','GET',`/${id}/profitability`,undefined,'TECNICO')).statusCode).toBe(403);

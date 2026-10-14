@@ -18,7 +18,7 @@ describe.skipIf(!database)('PostgreSQL: operational cycle and tenant isolation',
  let db:typeof import('../src/lib/prisma.js').prisma;
  let token:string,foreignToken:string,companyId:string,userId:string,foreignCompanyId:string,privateRoot:string;
  const email=`test-${randomUUID()}@example.com`,password='Isolated-Test-Only-2026!';
- async function call(method:'GET'|'POST'|'PUT',path:string,payload?:object,access=token){
+ async function call(method:'GET'|'POST'|'PUT'|'PATCH',path:string,payload?:object,access=token){
   return app.inject({method,url:'/api/v1'+path,payload,headers:access?{authorization:`Bearer ${access}`}:{}});
  }
  beforeAll(async()=>{
@@ -73,6 +73,19 @@ describe.skipIf(!database)('PostgreSQL: operational cycle and tenant isolation',
   expect(responses.filter(x=>x.statusCode===409)).toHaveLength(1);
   expect(await db.accountReceivable.count({where:{serviceOrderId:os.id}})).toBe(1);
   expect((await db.serviceOrder.findUniqueOrThrow({where:{id:os.id}})).status).toBe('INVOICED');
+ });
+ it('keeps invoice and OS values consistent when a financial edit races invoicing',async()=>{
+  const {os}=await fixture();
+  const [edit,invoice]=await Promise.all([
+   call('PATCH',`/service-orders/${os.id}/financials`,{finalValue:200}),
+   call('POST',`/service-orders/${os.id}/invoice`,{dueDate:'2026-10-15'})
+  ]);
+  expect([200,409]).toContain(edit.statusCode);expect(invoice.statusCode).toBe(200);
+  const saved=await db.serviceOrder.findUniqueOrThrow({where:{id:os.id}});
+  expect(saved.status).toBe('INVOICED');
+  expect(Number(invoice.json().originalAmount)).toBe(Number(saved.finalValue));
+  expect(Number(saved.finalValue)).toBe(edit.statusCode===200?200:100);
+  expect((await call('PATCH',`/service-orders/${os.id}/financials`,{finalValue:300})).statusCode).toBe(409);
  });
  it('rejects a foreign customer or another customer’s OS without saving a receivable',async()=>{
   const {customer,os}=await fixture();
