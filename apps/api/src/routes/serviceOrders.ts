@@ -106,7 +106,22 @@ export async function serviceOrderRoutes(app:FastifyInstance){app.addHook('preHa
  if(technicianIds.length){const technicians=await prisma.user.count({where:{id:{in:technicianIds},companyId:u.companyId,status:'ACTIVE'}});if(technicians!==technicianIds.length)return fail(reply,422,'INVALID_RELATION','Responsável não pertence à empresa ou está inativo.');}
  const count=await prisma.serviceOrder.count({where:{companyId:u.companyId}});const {technicianIds:ignoredTechnicianIds,...base}=p.data;const os=await prisma.serviceOrder.create({data:{...base,companyId:u.companyId,orderNumber:`OS-${String(count+1).padStart(6,'0')}`,createdById:u.id,status:p.data.scheduledAt?'SCHEDULED':'OPEN',technicians:{create:technicianIds.map(userId=>({userId}))},statusHistory:{create:{newStatus:p.data.scheduledAt?'SCHEDULED':'OPEN',userId:u.id}}},include:{technicians:true}});return reply.code(201).send(os)});
  app.patch('/:id/preparation',async(req,reply)=>{const u=req.user as AuthUser,{id}=req.params as any;const p=z.object({performedService:z.string().min(2).optional(),quotedValue:z.number().nonnegative().optional(),serviceTypeId:z.string().uuid().optional().nullable()}).safeParse(req.body);if(!p.success)return fail(reply,422,'VALIDATION_ERROR','Preparação da manutenção inválida.',p.error.flatten());const current=await prisma.serviceOrder.findFirst({where:{id,companyId:u.companyId}});if(!current)return fail(reply,404,'SERVICE_ORDER_NOT_FOUND','OS não encontrada.');if(!['OPEN','SCHEDULED','ASSIGNED','ON_THE_WAY','IN_PROGRESS'].includes(current.status))return fail(reply,409,'SERVICE_ORDER_LOCKED','Esta OS não pode mais ser preparada.');if(p.data.serviceTypeId){const service=await prisma.serviceType.findFirst({where:{id:p.data.serviceTypeId,companyId:u.companyId,active:true}});if(!service)return fail(reply,422,'INVALID_RELATION','Serviço não encontrado.');}return prisma.serviceOrder.update({where:{id},data:{performedService:p.data.performedService,quotedValue:p.data.quotedValue,serviceTypeId:p.data.serviceTypeId??undefined}})});
- app.post('/:id/measurements',async(req,reply)=>{const {id}=req.params as any;const p=z.object({voltage:z.number().optional(),current:z.number().optional(),returnTemperature:z.number().optional(),supplyTemperature:z.number().optional(),lowPressure:z.number().optional(),highPressure:z.number().optional(),superheat:z.number().optional(),subcooling:z.number().optional(),ambientTemperature:z.number().optional()}).safeParse(req.body);if(!p.success)return fail(reply,422,'VALIDATION_ERROR','Medição inválida.',p.error.flatten());const deltaT=p.data.returnTemperature!=null&&p.data.supplyTemperature!=null?p.data.returnTemperature-p.data.supplyTemperature:undefined;return reply.code(201).send(await prisma.serviceMeasurement.create({data:{serviceOrderId:id,...p.data,deltaT}}))});
+ app.post('/:id/measurements',async(req,reply)=>{
+  const u=req.user as AuthUser,{id}=req.params as {id:string};
+  const p=z.object({voltage:z.number().optional(),current:z.number().optional(),returnTemperature:z.number().optional(),supplyTemperature:z.number().optional(),lowPressure:z.number().optional(),highPressure:z.number().optional(),superheat:z.number().optional(),subcooling:z.number().optional(),ambientTemperature:z.number().optional()}).safeParse(req.body);if(!p.success)return fail(reply,422,'VALIDATION_ERROR','Medição inválida.',p.error.flatten());const deltaT=p.data.returnTemperature!=null&&p.data.supplyTemperature!=null?p.data.returnTemperature-p.data.supplyTemperature:undefined;
+  try{
+   const measurement=await prisma.$transaction(async tx=>{
+    // Serialize with completion and recheck status before inserting the measurement.
+    const order=await tx.serviceOrder.updateMany({where:{id,companyId:u.companyId,status:{in:['OPEN','SCHEDULED','ASSIGNED','ON_THE_WAY','IN_PROGRESS','WAITING_APPROVAL','WAITING_PARTS']}},data:{updatedAt:new Date()}});
+    if(order.count!==1)throw new Error('SERVICE_ORDER_LOCKED');
+    return tx.serviceMeasurement.create({data:{serviceOrderId:id,...p.data,deltaT}});
+   });
+   return reply.code(201).send(measurement);
+  }catch(e:any){
+   if(e.message==='SERVICE_ORDER_LOCKED')return fail(reply,409,'SERVICE_ORDER_LOCKED','Não é possível adicionar medições a uma OS encerrada.');
+   throw e;
+  }
+ });
  app.post('/:id/materials',async(req,reply)=>{
   const u=req.user as AuthUser,{id}=req.params as {id:string};
   const p=z.object({materialId:z.string().uuid(),quantity:materialQuantity}).safeParse(req.body);

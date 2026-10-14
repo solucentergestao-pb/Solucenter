@@ -279,6 +279,15 @@ describe.skipIf(!database)('PostgreSQL: operational cycle and tenant isolation',
   expect(await db.notificationDelivery.count({where:{notificationId:own.id}})).toBe(1);
   expect((await db.notification.findUniqueOrThrow({where:{id:foreign.id}})).status).toBe('PENDING');
  },30000);
+ it('blocks measurements in every closed status without inserting rows',async()=>{
+  const {os}=await fixture();
+  for(const status of ['COMPLETED','INVOICED','RECEIVED','CANCELLED'] as const){
+   await db.serviceOrder.update({where:{id:os.id},data:{status}});
+   const response=await call('POST',`/service-orders/${os.id}/measurements`,{voltage:220});
+   expect(response.statusCode).toBe(409);expect(response.json().error.code).toBe('SERVICE_ORDER_LOCKED');
+  }
+  expect(await db.serviceMeasurement.count({where:{serviceOrderId:os.id}})).toBe(0);
+ });
  it('consumes the last part once across concurrent OS and blocks closed orders',async()=>{
   const first=await fixture(),second=await fixture();
   await db.serviceOrder.updateMany({where:{id:{in:[first.os.id,second.os.id]}},data:{status:'IN_PROGRESS'}});
