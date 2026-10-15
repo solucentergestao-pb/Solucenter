@@ -103,6 +103,9 @@ describe.skipIf(!database)('PostgreSQL: operational cycle and tenant isolation',
   expect((await call('POST',`/finance/receivables/${r.id}/payments`,{amount:100,paymentMethod:'PIX'},foreignToken)).statusCode).toBe(404);
   const technician=app.jwt.sign({id:userId,companyId,role:'TECNICO',permissions:[]});
   expect((await call('POST',`/service-orders/${os.id}/invoice`,{dueDate:'2026-10-15'},technician)).statusCode).toBe(403);
+  expect((await call('GET','/finance/receivables',undefined,technician)).statusCode).toBe(403);
+  expect((await call('POST',`/finance/receivables/${r.id}/payments`,{amount:100,paymentMethod:'PIX'},technician)).statusCode).toBe(403);
+  expect((await call('POST','/finance/receivables',{customerId:customer.id,description:'Unauthorized',amount:100,dueDate:'2026-10-15'},technician)).statusCode).toBe(403);
   expect(await db.payment.count({where:{receivableId:r.id}})).toBe(0);
  });
  it('rejects fractions of a cent and records an exact cent payment',async()=>{
