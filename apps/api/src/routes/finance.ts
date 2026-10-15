@@ -37,6 +37,11 @@ export async function financeRoutes(app:FastifyInstance){
      // Shared claim with the OS invoice route. The row lock lasts through commit.
      const claimed=await tx.serviceOrder.updateMany({where:{id:os.id,companyId:u.companyId,status:'COMPLETED'},data:{status:'INVOICED'}});
      if(claimed.count!==1)throw new Error('INVOICE_CONFLICT');
+     // Read the amount after claiming the OS row, so concurrent financial edits cannot change it.
+     const locked=await tx.serviceOrder.findFirst({where:{id:os.id,companyId:u.companyId}});
+     if(!locked)throw new Error('INVALID_RELATION');
+     const expectedAmount=new Prisma.Decimal(locked.finalValue??locked.quotedValue??0);
+     if(expectedAmount.lte(0)||!expectedAmount.equals(p.data.amount))throw new Error('INVOICE_AMOUNT_MISMATCH');
      const existing=await tx.accountReceivable.findFirst({where:{serviceOrderId:os.id,status:{not:'CANCELLED'}}});
      if(existing)throw new Error('INVOICE_CONFLICT');
      await tx.serviceOrderStatusHistory.create({data:{serviceOrderId:os.id,previousStatus:'COMPLETED',newStatus:'INVOICED',userId:u.id}});
@@ -50,6 +55,7 @@ export async function financeRoutes(app:FastifyInstance){
     INVALID_RELATION:[422,'INVALID_RELATION','OS ou orçamento não pertence ao cliente informado.'],
     NOT_COMPLETED:[409,'SERVICE_ORDER_NOT_COMPLETED','Conclua a OS antes de cobrar.'],
     INVOICE_CONFLICT:[409,'RECEIVABLE_EXISTS','Esta OS já foi faturada ou está sendo faturada.'],
+    INVOICE_AMOUNT_MISMATCH:[409,'INVOICE_AMOUNT_MISMATCH','O valor da cobrança deve ser igual ao valor da OS.'],
    };
    const error=errors[e.message];
    return error?fail(reply,...error):fail(reply,500,'RECEIVABLE_ERROR','Não foi possível criar a cobrança.');
