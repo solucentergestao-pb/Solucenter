@@ -2,6 +2,7 @@ import {FastifyInstance} from 'fastify';
 import {z} from 'zod';
 import {prisma} from '../lib/prisma.js';
 import {AuthUser} from '../lib/auth.js';
+import {can} from '../lib/security.js';
 import {fail} from '../lib/errors.js';
 import {receivableAfterPayment} from '../lib/commercial.js';
 import {Prisma} from '@prisma/client';
@@ -10,7 +11,7 @@ import {Prisma} from '@prisma/client';
 const amountSchema=z.number().positive().max(9999999999.99).refine(value=>new Prisma.Decimal(value).decimalPlaces()<=2,'Informe um valor com no máximo duas casas decimais.');
 
 export async function financeRoutes(app:FastifyInstance){
- app.addHook('preHandler',async r=>r.jwtVerify());
+ app.addHook('preHandler',async(req,reply)=>{await req.jwtVerify();const u=req.user as AuthUser;const permission=req.method==='GET'?'finance.read':'finance.write';if(!can(u,permission))return fail(reply,403,'FORBIDDEN','Acesso não autorizado.');});
  app.get('/receivables',async req=>{
   const u=req.user as AuthUser;
   return prisma.accountReceivable.findMany({where:{companyId:u.companyId},include:{customer:true,serviceOrder:true,payments:true},orderBy:{dueDate:'asc'}});
