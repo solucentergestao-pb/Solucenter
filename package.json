@@ -17,7 +17,7 @@
     "test": "npm --workspace apps/api test",
     "build": "npm run prisma:generate && npm --workspace apps/api run build",
     "build:web": "npm --workspace apps/web run build",
-    "start": "npm run prisma:seed && npm --workspace apps/api run start"
+    "start": "npm --workspace apps/api run start"
   },
   "prisma": {
     "schema": "packages/db/schema.prisma"
