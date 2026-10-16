@@ -9,6 +9,8 @@ export default function NovoEquip() {
   const [envs, setEnvs] = useState<any[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoMessage, setPhotoMessage] = useState("");
   const unitRequest = useRef(0);
   const [created, setCreated] = useState<any>();
   const [f, setF] = useState<any>({
@@ -104,7 +106,7 @@ export default function NovoEquip() {
 
   async function save(e: any) {
     e.preventDefault();
-    if (busy) return;
+    if (busy || created) return;
     setBusy(true);
     setError("");
 
@@ -141,14 +143,26 @@ export default function NovoEquip() {
   }
 
   async function photo(file: File) {
+    if (!created || photoBusy) return;
+
     const fd = new FormData();
     fd.append("category", "NAMEPLATE");
     fd.append("file", file);
-    await api("/uploads/equipment/" + created.id + "/photo", {
-      method: "POST",
-      body: fd,
-    });
-    alert("Foto enviada");
+    setPhotoBusy(true);
+    setPhotoMessage("");
+    setError("");
+
+    try {
+      await api("/uploads/equipment/" + created.id + "/photo", {
+        method: "POST",
+        body: fd,
+      });
+      setPhotoMessage("Foto enviada com sucesso.");
+    } catch (err: any) {
+      setError(err?.message ?? "Não foi possível enviar a foto. Tente novamente.");
+    } finally {
+      setPhotoBusy(false);
+    }
   }
 
   return (
@@ -160,7 +174,8 @@ export default function NovoEquip() {
         </p>
       )}
 
-      <form className="card grid" onSubmit={save}>
+      {!created && (
+        <form className="card grid" onSubmit={save}>
         <select
           required
           value={f.customerId}
@@ -293,7 +308,8 @@ export default function NovoEquip() {
         <button disabled={busy}>
           {busy ? "Salvando…" : "Salvar equipamento"}
         </button>
-      </form>
+        </form>
+      )}
 
       {created && (
         <section className="card">
@@ -305,14 +321,20 @@ export default function NovoEquip() {
           <button type="button" onClick={() => download('label')}>
             Baixar etiqueta 60 × 40 mm
           </button>
+          {photoMessage && <p role="status">{photoMessage}</p>}
           <p>
             <input
               type="file"
               accept="image/*"
-              onChange={(e) =>
-                e.target.files?.[0] && photo(e.target.files[0])
-              }
+              disabled={photoBusy}
+              onChange={async (e) => {
+                const input = e.currentTarget;
+                const file = input.files?.[0];
+                if (file) await photo(file);
+                input.value = "";
+              }}
             />
+            {photoBusy && <span> Enviando foto…</span>}
           </p>
         </section>
       )}
